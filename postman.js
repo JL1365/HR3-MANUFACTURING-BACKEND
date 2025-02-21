@@ -48,5 +48,11 @@
 // http://localhost:7687/api/benefitDeduction/add-user-deduction METHOD: POST
 
 // FOR GETTING AUTHENTICATED DEDUCTIONS
+//http://localhost:7687/api/benefitDeduction/get-my-deductions METHOD: GET
 //benefitDeductionRoute.get("/get-my-deductions",getMyDeduction)
+
+// FOR GETTING ALL DEDUCTIONS
+//http://localhost:7687/api/benefitDeduction/get-all-deductions METHOD: GET
+//benefitDeductionRoute.get("/get-all-deductions",verifyToken,getAllBenefitDeductions)
+
 

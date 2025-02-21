@@ -87,3 +87,23 @@ export const getMyDeduction = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
+export const getAllBenefitDeductions = async (req, res) => {
+  try {
+    // Fetch all benefit deductions
+    const allDeductions = await BenefitDeduction.find()
+      .populate('userId')
+      .populate('BenefitRequestId')
+      .exec();
+
+    if (allDeductions.length === 0) {
+      return res.status(404).json({message: "No benefit deductions found.",});
+    }
+
+    res.status(200).json({message: "All benefit deductions retrieved successfully.",deductions: allDeductions,});
+  } catch (error) {
+    console.error(`Error in fetching all benefit deductions: ${error.message}`);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
