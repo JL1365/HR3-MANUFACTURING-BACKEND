@@ -1,11 +1,15 @@
 import { BenefitRequest } from "../models/benefitRequestModel.js";
 import { Benefit } from "../models/benefitModel.js";
 import upload from '../config/multerConfig.js';
-import { User } from "../models/userModel.js";
 
 export const applyBenefit = async (req, res) => {
     try {
-      const { userId, benefitId } = req.body;
+      const userId = req.user._id;
+      const { benefitId } = req.body;
+  
+      if (!req.user || !userId) {
+        return res.status(401).json({ message: 'User not authenticated.' });
+      }
   
       const existingRequest = await BenefitRequest.findOne({ userId, benefitId });
       if (existingRequest) {
@@ -14,7 +18,7 @@ export const applyBenefit = async (req, res) => {
         });
       }
   
-      // Fetch the benefit to check isNeedRequest
+      // Fetch the benefit to check if it requires a request
       const benefit = await Benefit.findById(benefitId);
       if (!benefit) {
         return res.status(404).json({
@@ -48,19 +52,13 @@ export const applyBenefit = async (req, res) => {
   
       await newRequest.save();
   
-      res.status(201).json({
-        message: "Benefit request submitted successfully",
-        requestId: newRequest._id,
-      });
+      res.status(201).json({message: "Benefit request submitted successfully",requestId: newRequest._id,});
     } catch (error) {
       console.error(`Error in applying benefit: ${error.message}`);
-      res.status(500).json({
-        message: "Internal server error",
-      });
+      res.status(500).json({message: "Internal server error",});
     }
   };
   
-
 export { upload };
 
 
