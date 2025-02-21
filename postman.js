@@ -46,3 +46,7 @@
 
 //FOR CREATING BENEFIT DEDUCTIONS
 // http://localhost:7687/api/benefitDeduction/add-user-deduction METHOD: POST
+
+// FOR GETTING AUTHENTICATED DEDUCTIONS
+//benefitDeductionRoute.get("/get-my-deductions",getMyDeduction)
+

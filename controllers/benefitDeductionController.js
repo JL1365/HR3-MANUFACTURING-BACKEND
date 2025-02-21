@@ -65,3 +65,25 @@ export const addUserDeduction = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
+export const getMyDeduction = async (req, res) => {
+  try {
+    if(!req.user || !req.user._id){
+        return res.status(401).json({message:'User not authenticated.'});
+    }
+    const userId = req.user._id;
+    const myDeductions = await BenefitDeduction.find({ userId })
+      .populate('BenefitRequestId')
+      .exec();
+
+    if (myDeductions.length === 0) {
+      return res.status(404).json({message: "No deductions found for this user.",});
+    }
+
+    res.status(200).json({message: "Deductions retrieved successfully.",myDeductions});
+  } catch (error) {
+    console.error(`Error in fetching deductions: ${error.message}`);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
