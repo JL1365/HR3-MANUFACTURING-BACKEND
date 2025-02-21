@@ -25,3 +25,16 @@ export const createBenefit = async (req,res) => {
     }
 };
 
+export const getAllBenefits = async (req,res) => {
+    try {
+        const allBenefits = await Benefit.find({});
+        if(allBenefits.length == 0){
+            return res.status(404).json({message:"No benefits found!"});
+        }
+        res.status(200).json({message:"Fetching benefits success:",allBenefits})
+    } catch (error) {
+        console.log(`Error in fetching benefits: ${error.message}`);
+        return res.status(500).json({message:"Internal server error"});
+    }
+};
+
