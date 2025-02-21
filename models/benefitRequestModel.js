@@ -13,8 +13,8 @@ const benefitRequestSchema = new mongoose.Schema(
       ref: "Benefit",
     },
     uploadDocs: {
-      frontId: { type: String, required: true },
-      backId: { type: String, required: true },
+      frontId: { type: String},
+      backId: { type: String},
     },
     status:{
       type:String,
