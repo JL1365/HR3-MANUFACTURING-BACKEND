@@ -38,3 +38,6 @@
 
 //FOR GETTING ALL BENEFIT REQUEST
 // http://localhost:7687/api/benefitRequest/get-all-applied-requests METHOD: GET
+
+//FOR UPDATING ALL BENEFIT REQUEST
+// http://localhost:7687/api/benefitRequest/update-apply-request-status METHOD: PUT
