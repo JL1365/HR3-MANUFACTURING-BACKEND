@@ -27,3 +27,7 @@
 
 //FOR DELETING BENEFIT
 // http://localhost:7687/api/benefit/delete-benefit/:id METHOD: DELETE
+
+
+//FOR CREATING BENEFIT REQUEST
+// http://localhost:7687/api/benefitRequest/apply-benefit METHOD: POST

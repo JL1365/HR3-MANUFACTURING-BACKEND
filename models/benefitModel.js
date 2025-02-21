@@ -12,7 +12,7 @@ const benefitSchema = await mongoose.Schema({
     },
     benefitType:{
         type: String,
-        enum: ['Compensation', 'Health','Financial'],
+        enum: ['Compensation', 'Health','Financial','Others'],
         required: true
     },
     isNeedRequest:{
