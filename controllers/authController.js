@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import { User } from "../models/userModel.js";
+import { generateTokenAndSetCookie } from "../utils/generateTokenAndSetCookie.js";
 
 export const RegisterAccount = async (req, res) => {
     try {
@@ -68,5 +69,35 @@ export const getAllUsers = async (req,res) => {
     } catch (error) {
         console.log(`Error in getting users: ${error.message}`);
         return res.status(500).json({ message: "Internal server error" });
+    }
+}
+
+export const loginAccount = async (req,res) => {
+    try {
+        const {identifier,password} = req.body;
+        
+        if(!identifier||!password){
+            return res.status(400).json({message:"All fields are required!"});
+        }
+        //Check if its email or username
+        const isEmail = /\S+@\S+\.\S+/.test(identifier);
+        //Find email or username in database
+        const user = await User.findOne({
+            [isEmail ? 'email' : 'username']:identifier
+        });
+
+        if(!user){
+            return res.status(400).json({message:isEmail ? 'Email not found!' : 'Username not found!'});
+        }
+        //Checking if password match in username or email of a user
+        const isPasswordMatch = await bcrypt.compare(password,user.password);
+        if(!isPasswordMatch){
+            return res.status(400).json({message:"Password does not match!"});
+        }
+        generateTokenAndSetCookie(res,user._id)
+        res.status(200).json({message:"Logged in successfully!", user});
+    } catch (error) {
+        console.log(`Error in Login: ${error.message}`);
+        return res.status(500).json({message:"Internal server error!"});
     }
 }
