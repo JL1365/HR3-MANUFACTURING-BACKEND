@@ -18,3 +18,12 @@
 
 //FOR CREATING BENEFIT
 // http://localhost:7687/api/benefit/create-benefit METHOD: POST
+
+//FOR GETTING BENEFITS
+// http://localhost:7687/api/benefit/get-all-benefits METHOD: GET
+
+//FOR UPDATING
+// http://localhost:7687/api/benefit/update-benefit/:id METHOD: PUT
+
+//FOR DELETING BENEFIT
+// http://localhost:7687/api/benefit/delete-benefit/:id METHOD: DELETE
