@@ -72,3 +72,18 @@ export const updateBenefit = async (req, res) => {
         return res.status(500).json({ message: "Internal server error!" });
     }
 };
+
+export const deleteBenefit = async (req,res) => {
+    try {
+        const {id} = req.params;
+        const benefitExist = await Benefit.findById(id);
+        if(!benefitExist){
+            return res.status(404).json({message:"Benefit not found"});
+        }
+        const deletedBenefit = await Benefit.findByIdAndDelete(id);
+        res.status(200).json({message:"Benefit deleted successfully!",deletedBenefit});  
+    } catch (error) {
+        console.log(`Error in deleting benefit: ${error.message}`);
+        return res.status(500).json({ message: "Internal server error!" });
+    }
+}
