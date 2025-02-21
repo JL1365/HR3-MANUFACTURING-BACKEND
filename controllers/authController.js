@@ -106,3 +106,24 @@ export const loginAccount = async (req,res) => {
         return res.status(500).json({message:"Internal server error!"});
     }
 }
+
+export const logoutAccount = async (req, res) => {
+    try {
+        if(!req.cookies.token){
+            return res.status(400).json({ success: false, message: "You are not logged in" });
+        }
+        const userId = req.user;
+        const user = await User.findById(userId);
+        //It will clear the token 
+        res.clearCookie("token", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+        });
+
+        return res.status(200).json({ success: true, message: "Logged out successfully",user });
+    } catch (error) {
+        console.error("Error during logout:", error);
+        return res.status(500).json({ success: false, message: "Server error during logout" });
+    }
+};
