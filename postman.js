@@ -29,5 +29,12 @@
 // http://localhost:7687/api/benefit/delete-benefit/:id METHOD: DELETE
 
 
+/* benefitRequestRoute */
 //FOR CREATING BENEFIT REQUEST
 // http://localhost:7687/api/benefitRequest/apply-benefit METHOD: POST
+
+//FOR GETTING MY BENEFIT REQUEST
+// http://localhost:7687/api/benefitRequest/get-my-apply-requests METHOD: GET
+
+//FOR GETTING ALL BENEFIT REQUEST
+// http://localhost:7687/api/benefitRequest/get-all-applied-requests METHOD: GET

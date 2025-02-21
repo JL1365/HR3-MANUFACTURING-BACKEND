@@ -1,6 +1,7 @@
 import { BenefitRequest } from "../models/benefitRequestModel.js";
 import { Benefit } from "../models/benefitModel.js";
 import upload from '../config/multerConfig.js';
+import { User } from "../models/userModel.js";
 
 export const applyBenefit = async (req, res) => {
     try {
@@ -52,10 +53,9 @@ export const applyBenefit = async (req, res) => {
         requestId: newRequest._id,
       });
     } catch (error) {
-      console.error(error);
+      console.error(`Error in applying benefit: ${error.message}`);
       res.status(500).json({
-        message: "An error occurred while applying for benefits",
-        error: error.message,
+        message: "Internal server error",
       });
     }
   };
@@ -72,6 +72,20 @@ export const getMyApplyRequests = async (req,res) => {
         const myApplyRequests = await BenefitRequest.find({});
         res.status(200).json({status:true,myApplyRequests})
     } catch (error) {
-        
+        console.log(`Error in getting my apply request: ${error.message}`);
+        return res.status(500).json({message:"Internal server error"});
     }
 };
+
+export const getAllAppliedRequest = async(req,res) => {
+    try {
+        const allRequestBenefit = await BenefitRequest.find({});
+        if(allRequestBenefit === 0) {
+            return res.status(404).json({message:"No request Found!"});
+        }
+        res.status(200).json({status:true,allRequestBenefit})
+    } catch (error) {
+        console.log(`Error in getting all applied request: ${error.message}`);
+        return res.status(500).json({message:"Internal server error"});
+    }
+}
