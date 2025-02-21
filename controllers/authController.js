@@ -99,7 +99,7 @@ export const loginAccount = async (req,res) => {
         if(!isPasswordMatch){
             return res.status(400).json({message:"Password does not match!"});
         }
-        generateTokenAndSetCookie(res,user._id)
+        generateTokenAndSetCookie(res,user)
         res.status(200).json({message:"Logged in successfully!", user});
     } catch (error) {
         console.log(`Error in Login: ${error.message}`);
@@ -126,4 +126,11 @@ export const logoutAccount = async (req, res) => {
         console.error("Error during logout:", error);
         return res.status(500).json({ success: false, message: "Server error during logout" });
     }
+};
+
+export const checkAuth = (req, res) => {
+    if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated!" });
+    }
+    res.status(200).json({ message: "User is authenticated!", user: req.user });
 };
