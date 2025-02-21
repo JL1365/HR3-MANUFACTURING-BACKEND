@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Benefit } from "../models/benefitModel.js";
 
 export const createBenefit = async (req,res) => {
@@ -38,3 +39,36 @@ export const getAllBenefits = async (req,res) => {
     }
 };
 
+export const updateBenefit = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { benefitName, benefitDescription, benefitType, isNeedRequest } = req.body;
+
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ status: false, message: "Invalid benefit ID format." });
+        }
+
+        const existingBenefit = await Benefit.findById(id);
+        if (!existingBenefit) {
+            return res.status(404).json({ status: false, message: "Benefit not found." });
+        }
+
+        if (existingBenefit.benefitName !== benefitName) {
+            const nameExists = await Benefit.findOne({ benefitName });
+            if (nameExists) {
+                return res.status(400).json({ status: false, message: "Benefit name already exists." });
+            }
+        }
+
+        const updatedBenefit = await Benefit.findByIdAndUpdate(
+            id,
+            { benefitName, benefitDescription, benefitType, isNeedRequest },
+            { new: true }
+        );
+
+        res.status(200).json({ message: "Updating benefit successful!", updatedBenefit });
+    } catch (error) {
+        console.log(`Error in updating benefit: ${error.message}`);
+        return res.status(500).json({ message: "Internal server error!" });
+    }
+};
