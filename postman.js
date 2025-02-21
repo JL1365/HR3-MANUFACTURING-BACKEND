@@ -41,3 +41,8 @@
 
 //FOR UPDATING ALL BENEFIT REQUEST
 // http://localhost:7687/api/benefitRequest/update-apply-request-status METHOD: PUT
+
+/* benefitDeductionRoute */
+
+//FOR CREATING BENEFIT DEDUCTIONS
+// http://localhost:7687/api/benefitDeduction/add-user-deduction METHOD: POST
