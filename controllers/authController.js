@@ -53,7 +53,20 @@ export const RegisterAccount = async (req, res) => {
 
         return res.status(201).json({ message: "User registered successfully!",newUser });
     } catch (error) {
-        console.error("Error in RegisterAccount:", error);
+        console.error("Error in RegisterAccount:", error.message);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
+
+export const getAllUsers = async (req,res) => {
+    try {
+        const users = await User.find({}); //Get all users
+        if(users.length === 0){
+            return res.status(404).json({message:"No users found!"}) //verifying if there are no users found
+        }
+        res.status(200).json({message:"Fetching users successfully!",users});
+    } catch (error) {
+        console.log(`Error in getting users: ${error.message}`);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+}
