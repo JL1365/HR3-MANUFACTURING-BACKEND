@@ -74,6 +74,11 @@ export const getAllUsers = async (req,res) => {
 
 export const loginAccount = async (req,res) => {
     try {
+        // add validation if youare already login
+        const token = req.cookies.token;
+        if(token){
+            return res.status(400).json({message:"You are already logged in"});
+        }
         const {identifier,password} = req.body;
         
         if(!identifier||!password){
