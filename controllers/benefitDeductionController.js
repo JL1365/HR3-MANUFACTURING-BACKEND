@@ -113,3 +113,45 @@ export const getAllBenefitDeductions = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
+export const updateUserDeduction = async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const { id } = req.params;
+
+    if (!id || amount == null || isNaN(amount)) {
+      return res.status(400).json({
+        message: "Deduction ID and a valid numeric amount are required.",
+      });
+    }
+
+    const numericAmount = parseFloat(amount);
+
+    let existingDeduction = await BenefitDeduction.findById(id);
+
+    if (!existingDeduction) {
+      return res.status(404).json({ message: "Deduction not found." });
+    }
+
+    existingDeduction.amount = numericAmount;
+    await existingDeduction.save();
+
+    let deductionHistory = await BenefitDeductionHistory.findOne({
+      userId: existingDeduction.userId,
+      benefitRequestId: existingDeduction.BenefitRequestId,
+    });
+
+    if (deductionHistory) {
+      deductionHistory.totalAmount = numericAmount;
+      await deductionHistory.save();
+    }
+
+    res.status(200).json({message: "Deduction updated successfully.",deduction: existingDeduction,deductionHistory,});
+
+  } catch (error) {
+    console.error(`Error in updating user deduction: ${error.message}`);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
