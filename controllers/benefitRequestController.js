@@ -67,7 +67,8 @@ export const getMyApplyRequests = async (req,res) => {
         if(!req.user || !req.user._id){
             return res.status(401).json({message:'User not authenticated.'});
         }
-        const myApplyRequests = await BenefitRequest.find({});
+        const myApplyRequests = await BenefitRequest.find({ userId: req.user._id})
+        .populate("benefitId","benefitName")
         res.status(200).json({status:true,myApplyRequests})
     } catch (error) {
         console.log(`Error in getting my apply request: ${error.message}`);
@@ -123,6 +124,52 @@ export const updateApplyRequestStatus = async (req, res) => {
     res.status(200).json({message: "Benefit request status updated successfully.",updatedRequest,});
   } catch (error) {
     console.error(`Error in Updating request status: ${error.message}`);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+export const updateMyUploadedDocs = async (req, res) => {
+  try {
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ message: 'User not authenticated.' });
+    }
+
+    const { requestId } = req.params;
+    const currentRequest = await BenefitRequest.findById(requestId);
+    
+    if (!currentRequest) {
+      return res.status(404).json({ message: "Benefit request not found." });
+    }
+
+    const requestAge = new Date() - currentRequest.createdAt;
+    const fifteenMinutes = 15 * 60 * 1000;
+
+    if (requestAge > fifteenMinutes) {
+      return res.status(403).json({ message: "Cannot update uploaded documents after 15 minutes." });
+    }
+
+    const updatedDocs = { uploadDocs: {} };
+    if (req.files.frontId) {
+      updatedDocs.uploadDocs.frontId = req.files.frontId[0].path;
+    }
+    if (req.files.backId) {
+      updatedDocs.uploadDocs.backId = req.files.backId[0].path;
+    }
+
+    if (Object.keys(updatedDocs.uploadDocs).length === 0) {
+      return res.status(400).json({ message: "No new documents provided for update." });
+    }
+
+    const updatedRequest = await BenefitRequest.findByIdAndUpdate(
+      requestId,
+      { $set: updatedDocs },
+      { new: true }
+    );
+
+    res.status(200).json({message: "Uploaded documents updated successfully.",updatedRequest,});
+  } catch (error) {
+    console.error(`Error in updating uploaded documents: ${error.message}`);
     res.status(500).json({ message: "Internal server error" });
   }
 };
