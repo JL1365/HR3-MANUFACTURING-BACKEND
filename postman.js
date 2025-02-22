@@ -56,3 +56,5 @@
 //benefitDeductionRoute.get("/get-all-deductions",verifyToken,getAllBenefitDeductions)
 
 
+// FOR GETTING UPDATING  DEDUCTIONS
+//http://localhost:7687/api/benefitDeduction/update-user-deduction METHOD: PUT
