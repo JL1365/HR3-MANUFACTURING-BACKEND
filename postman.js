@@ -68,3 +68,15 @@
 
 //http://localhost:7687/api/incentive/update-incentive/:id   METHOD:PUT
 //http://localhost:7687/api/incentive/delete-incentive/:id   METHOD:DELETE
+
+/* incentiveTrackingRoute */
+
+//http://localhost:7687/api/incentiveTracking/create-incentive-tracking
+
+//http://localhost:7687/api/incentiveTracking/get-all-incentive-tracking
+
+//http://localhost:7687/api/incentiveTracking/get-my-incentives-tracking
+
+//http://localhost:7687/api/incentiveTracking/update-incentive-tracking/67b98d7129612c8ae2ee8996
+
+//http://localhost:7687/api/incentiveTracking/delete-incentive-tracking/67b98d7129612c8ae2ee8996
