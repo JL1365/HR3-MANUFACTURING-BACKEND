@@ -94,7 +94,13 @@ export const getAllBenefitDeductions = async (req, res) => {
     // Fetch all benefit deductions
     const allDeductions = await BenefitDeduction.find()
       .populate('userId')
-      .populate('BenefitRequestId')
+      .populate({
+        path: 'BenefitRequestId',
+        populate: {
+          path: 'benefitId',
+          model: 'Benefit'
+        }
+      })
       .exec();
 
     if (allDeductions.length === 0) {
