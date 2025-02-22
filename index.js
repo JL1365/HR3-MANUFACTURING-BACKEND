@@ -12,6 +12,8 @@ import benefitRoute from './routes/benefitRoute.js';
 import benefitRequestRoute from './routes/benefitRequestRoute.js';
 import benefitDeductionRoute from './routes/benefitDeductionRoute.js';
 
+import incentiveRoute from './routes/incentiveRoute.js';
+
 dotenv.config(); //loads variable defined in .env
 connectDB(); //Establishes a connection to MongoDB 
 
@@ -31,6 +33,8 @@ app.use("/api/auth",authRoute);
 app.use("/api/benefit",benefitRoute);
 app.use("/api/benefitRequest",benefitRequestRoute);
 app.use("/api/benefitDeduction",benefitDeductionRoute);
+
+app.use("/api/incentive",incentiveRoute);
 
 app.listen(PORT,()=> {
     console.log(`Server is running ${PORT}`);

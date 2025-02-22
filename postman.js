@@ -58,3 +58,13 @@
 
 // FOR GETTING UPDATING  DEDUCTIONS
 //http://localhost:7687/api/benefitDeduction/update-user-deduction METHOD: PUT
+
+
+/* incentiveRoute */
+//http://localhost:7687/api/incentive/get-all-incentives METHOD: GET
+
+
+//http://localhost:7687/api/incentive/create-incentive METHOD: POST
+
+//http://localhost:7687/api/incentive/update-incentive/:id   METHOD:PUT
+//http://localhost:7687/api/incentive/delete-incentive/:id   METHOD:DELETE
