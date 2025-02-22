@@ -78,7 +78,9 @@ export const getMyApplyRequests = async (req,res) => {
 
 export const getAllAppliedRequest = async(req,res) => {
     try {
-        const allRequestBenefit = await BenefitRequest.find({});
+        const allRequestBenefit = await BenefitRequest.find({})
+        .populate('userId', 'firstName lastName')
+        .populate('benefitId', 'benefitName');
         if(allRequestBenefit === 0) {
             return res.status(404).json({message:"No request Found!"});
         }
