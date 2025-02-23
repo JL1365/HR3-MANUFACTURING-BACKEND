@@ -33,15 +33,14 @@ export const createIncentiveTracking = async (req, res) => {
 
 export const getAllIncentiveTracking = async (req, res) => {
     try {
-        const allIncentivesTracking = await IncentiveTracking.find()
-            .populate("userId", "name email")
-            .populate("incentiveId", "incentiveName incentiveType");
-
-        res.status(200).json({ success: true, data: allIncentivesTracking });
+        const incentiveTrackings = await IncentiveTracking.find().populate('userId incentiveId');
+        res.json({ allIncentivesTracking: incentiveTrackings });
     } catch (error) {
-        res.status(500).json({ success: false, message: "Server error", error: error.message });
+        console.error(error);
+        res.status(500).json({ message: "Failed to fetch incentive tracking" });
     }
 };
+
 
 export const getMyIncentiveTracking = async (req, res) => {
     try {
