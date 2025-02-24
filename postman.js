@@ -71,12 +71,12 @@
 
 /* incentiveTrackingRoute */
 
-//http://localhost:7687/api/incentiveTracking/create-incentive-tracking
+//http://localhost:7687/api/incentiveTracking/create-incentive-tracking METHOD:POST
 
-//http://localhost:7687/api/incentiveTracking/get-all-incentive-tracking
+//http://localhost:7687/api/incentiveTracking/get-all-incentive-tracking METHOD GET
 
-//http://localhost:7687/api/incentiveTracking/get-my-incentives-tracking
+//http://localhost:7687/api/incentiveTracking/get-my-incentives-tracking METHOD:GET
 
-//http://localhost:7687/api/incentiveTracking/update-incentive-tracking/67b98d7129612c8ae2ee8996
-
-//http://localhost:7687/api/incentiveTracking/delete-incentive-tracking/67b98d7129612c8ae2ee8996
+//http://localhost:7687/api/incentiveTracking/update-incentive-tracking/67b98d7129612c8ae2ee8996 METHOD: PUT
+//http://localhost:7687/api/incentiveTracking/update-my-incentive-tracking-status/67bbd87f6dfafc2838146029 METHOD : PUT
+//http://localhost:7687/api/incentiveTracking/delete-incentive-tracking/67b98d7129612c8ae2ee8996 METHOD:DELETE

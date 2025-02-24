@@ -56,21 +56,21 @@ export const getMyIncentiveTracking = async (req, res) => {
     }
 };
 
-// ✅ Update Incentive Tracking Entry
 export const updateIncentiveTracking = async (req, res) => {
     try {
         const { id } = req.params;
-        const { amount, description, status } = req.body;
+        const { amount, description,earnedDate } = req.body;
+
+        const existingTracking = await IncentiveTracking.findById(id);
+        if (!existingTracking) {
+            return res.status(404).json({ success: false, message: "Incentive tracking record not found!" });
+        }
 
         const updatedTracking = await IncentiveTracking.findByIdAndUpdate(
             id,
-            { amount, description, status },
+            { amount, description,earnedDate },
             { new: true, runValidators: true }
         );
-
-        if (!updatedTracking) {
-            return res.status(404).json({ success: false, message: "Incentive tracking record not found!" });
-        }
 
         res.status(200).json({ success: true, message: "Incentive tracking updated successfully!", data: updatedTracking });
     } catch (error) {
@@ -78,7 +78,38 @@ export const updateIncentiveTracking = async (req, res) => {
     }
 };
 
-// ✅ Delete Incentive Tracking Entry
+export const updateMyIncentiveTrackingStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        const existingTracking = await IncentiveTracking.findById(id);
+        if (!existingTracking) {
+            return res.status(404).json({ success: false, message: "Incentive tracking record not found!" });
+        }
+
+        if (status !== "Received") {
+            return res.status(403).json({ success: false, message: "Employees can only mark incentives as Received!" });
+        }
+
+        const updateFields = { status: "Received" };
+        if (!existingTracking.dateReceived) {
+            updateFields.dateReceived = new Date();
+        }
+
+        const updatedTracking = await IncentiveTracking.findByIdAndUpdate(
+            id,
+            updateFields,
+            { new: true, runValidators: true }
+        );
+
+        res.status(200).json({ success: true, message: "Incentive marked as received!", data: updatedTracking });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+};
+
+
 export const deleteIncentiveTracking = async (req, res) => {
     try {
         const { id } = req.params;

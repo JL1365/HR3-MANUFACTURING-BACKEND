@@ -22,13 +22,12 @@ const incentiveTrackingSchema = new mongoose.Schema({
         type: Date, 
         required: true 
     },
-    dateGiven: {  
+    dateReceived: {  
         type: Date, 
-        default: Date.now 
     }, 
     status: { 
         type: String, 
-        enum: ["Pending", "Given"], 
+        enum: ["Pending", "Received"], 
         default: "Pending" 
     }, 
     processedBy: { 
