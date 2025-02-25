@@ -14,6 +14,7 @@ import benefitDeductionRoute from './routes/benefitDeductionRoute.js';
 
 import incentiveRoute from './routes/incentiveRoute.js';
 import incentiveTrackingRoute from './routes/incentiveTrackingRoute.js';
+import salesCommissionRoute from './routes/salesCommissionRoute.js';
 
 import compensationRoute from './routes/compensationPlanningRoute.js';
 
@@ -39,6 +40,7 @@ app.use("/api/benefitDeduction",benefitDeductionRoute);
 
 app.use("/api/incentive",incentiveRoute);
 app.use("/api/incentiveTracking",incentiveTrackingRoute);
+app.use("/api/salesCommission",salesCommissionRoute);
 
 app.use("/api/compensation",compensationRoute);
 
