@@ -4,10 +4,10 @@ import { generateTokenAndSetCookie } from "../utils/generateTokenAndSetCookie.js
 
 export const RegisterAccount = async (req, res) => {
     try {
-        const { email, username, firstName, lastName, password,role } = req.body;
+        const { email, username, firstName, lastName, password,role,Hr } = req.body;
 
         // Check for missing fields
-        if (!email || !username || !firstName || !lastName || !password) {
+        if (!email || !username || !firstName || !lastName || !password,Hr) {
             return res.status(400).json({ message: "All fields are required!" });
         }
 
@@ -47,7 +47,8 @@ export const RegisterAccount = async (req, res) => {
             firstName,
             lastName,
             password: hashedPassword, //It will store hashed in Database
-            role
+            role,
+            Hr
         });
 
         await newUser.save();
@@ -133,4 +134,30 @@ export const checkAuth = (req, res) => {
         return res.status(401).json({ message: "User not authenticated!" });
     }
     res.status(200).json({ message: "User is authenticated!", user: req.user });
+};
+
+
+export const changeHr = async (req, res) => {
+    try {
+        const { changeHRNumber } = req.body;
+
+        if (!changeHRNumber) {
+            return res.status(400).json({ success: false, message: "Change HR number is required." });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        user.Hr = changeHRNumber;
+        await user.save();
+
+        const newToken = generateTokenAndSetCookie(res, user);
+
+        return res.status(200).json({ success: true, message: "HR number updated successfully", user, token: newToken });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
 };

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const userSchema = await mongoose.Schema({
+const userSchema = new mongoose.Schema({
     username:{
         type:String,
         required:true,
@@ -16,7 +16,8 @@ const userSchema = await mongoose.Schema({
     },
     email:{
         type:String,
-        required:true
+        required:true,
+        unique:true
     },
     password:{
         type:String,
@@ -26,6 +27,10 @@ const userSchema = await mongoose.Schema({
         type:String,
         enum:["Admin","Employee"],
         default:"Employee"
+    },
+    Hr:{
+        type:Number,
+        enum:[1,2,3,4]
     }
 },{timestamps:true});
 

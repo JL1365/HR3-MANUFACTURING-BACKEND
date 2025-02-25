@@ -1,6 +1,6 @@
 import mongoose from "mongoose"
 
-const benefitDeductionSchema = mongoose.Schema({
+const benefitDeductionSchema =new mongoose.Schema({
         userId: {
           type: mongoose.Schema.Types.ObjectId,
           required: true,

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const benefitSchema = await mongoose.Schema({
+const benefitSchema = new mongoose.Schema({
     benefitName:{
         type:String,
         required:true,
