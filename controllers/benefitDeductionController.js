@@ -79,11 +79,11 @@ export const getMyDeduction = async (req, res) => {
         path: "BenefitRequestId",
         populate: {
           path: "benefitId",
-          select: "benefitName", // ✅ Para makuha ang benefitName
+          select: "benefitName",
         },
-        select: "createdAt", // ✅ Para makuha ang date (date ng request)
+        select: "createdAt",
       })
-      .select("amount BenefitRequestId createdAt") // ✅ Para masigurong amount at date ay na-fetch
+      .select("amount BenefitRequestId createdAt") 
       .exec();
 
     if (myDeductions.length === 0) {
