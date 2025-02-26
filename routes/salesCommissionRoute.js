@@ -35,9 +35,9 @@ salesCommissionRoute.get("/get-all-added-sales-commission", verifyToken,getAllAd
 salesCommissionRoute.post("/assign-sales-commission",verifyToken,assignSalesCommission);
 salesCommissionRoute.post("/add-my-sales-commission", verifyToken, upload.single("salesProof"), addMySalesCommission);
 
-salesCommissionRoute.get("/get-my-assigned-sales-commission", verifyToken,getMyAssignedSalesCommissions );
+salesCommissionRoute.get("/get-my-assigned-sales-commissions", verifyToken,getMyAssignedSalesCommissions );
 salesCommissionRoute.get("/get-my-sales-commission-status", verifyToken, getMySalesCommissionsStatus);
-salesCommissionRoute.get("/get-my-added-sales-commission", verifyToken,getMyAddedSalesCommissions);
+salesCommissionRoute.get("/get-my-added-sales-commissions", verifyToken,getMyAddedSalesCommissions);
 
 
 
