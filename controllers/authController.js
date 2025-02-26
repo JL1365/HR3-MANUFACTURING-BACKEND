@@ -4,10 +4,10 @@ import { generateTokenAndSetCookie } from "../utils/generateTokenAndSetCookie.js
 
 export const RegisterAccount = async (req, res) => {
     try {
-        const { email, username, firstName, lastName, password,role,Hr } = req.body;
+        const { email, username, firstName, lastName, password,role,Hr ,position} = req.body;
 
         // Check for missing fields
-        if (!email || !username || !firstName || !lastName || !password,Hr) {
+        if (!email || !username || !firstName || !lastName || !password,!Hr) {
             return res.status(400).json({ message: "All fields are required!" });
         }
 
@@ -48,7 +48,8 @@ export const RegisterAccount = async (req, res) => {
             lastName,
             password: hashedPassword, //It will store hashed in Database
             role,
-            Hr
+            Hr,
+            position
         });
 
         await newUser.save();

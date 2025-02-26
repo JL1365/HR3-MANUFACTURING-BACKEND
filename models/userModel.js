@@ -28,6 +28,10 @@ const userSchema = new mongoose.Schema({
         enum:["Admin","Employee"],
         default:"Employee"
     },
+    position:{
+        type:String,
+        enum:["CEO","Secretary","Production Head","Resellers Sales Head","Resellers"]
+    },
     Hr:{
         type:Number,
         enum:[1,2,3,4]

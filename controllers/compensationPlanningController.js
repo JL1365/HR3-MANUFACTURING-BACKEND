@@ -1,16 +1,30 @@
 import { CompensationPlanning } from "../models/compensationPlanningModel.js";
 import { StandardCompensation } from "./standardCompensationModel.js";
+import { User } from "../models/userModel.js";
+
 
 export const createCompensationPlan = async (req, res) => {
-    const {position,hourlyRate,overTimeRate,holidayRate,allowances,} = req.body;
+    const { position, hourlyRate, overTimeRate, holidayRate, allowances } = req.body;
 
     try {
-        const isPositionExist = await CompensationPlanning.findOne({ position });
+        const userPosition = await User.findOne({ position });
+
+        if (!userPosition) {
+            return res.status(400).json({ success: false, message: "Position not found in Users!" });
+        }
+
+        const isPositionExist = await CompensationPlanning.findOne({ position: userPosition._id });
         if (isPositionExist) {
             return res.status(400).json({ success: false, message: "Position already exists!" });
         }
 
-        const newPlan = new CompensationPlanning({position,hourlyRate,overTimeRate,holidayRate,allowances});
+        const newPlan = new CompensationPlanning({
+            position: userPosition._id,
+            hourlyRate,
+            overTimeRate,
+            holidayRate,
+            allowances
+        });
 
         await newPlan.save();
 
@@ -21,9 +35,11 @@ export const createCompensationPlan = async (req, res) => {
     }
 };
 
+
 export const getCompensationPlan = async (req,res) => {
     try {
-        const compensationPlans = await CompensationPlanning.find();
+        const compensationPlans = await CompensationPlanning.find()
+        .populate("position","position")
         res.status(200).json({success:true,data:compensationPlans});
     } catch (error) {
         console.log(`error in getting compensation plans ${error}`);
@@ -36,17 +52,33 @@ export const updateCompensationPlan = async (req, res) => {
     const { position, hourlyRate, overTimeRate, holidayRate, allowances } = req.body;
 
     try {
-        const compensationPlan = await CompensationPlanning.findById(id);
+        const compensationPlan = await CompensationPlanning.findById(id).populate("position");
+
         if (!compensationPlan) {
             return res.status(404).json({ success: false, message: "Compensation plan not found." });
         }
 
-        if (position && position !== compensationPlan.position) {
-            const isPositionExist = await CompensationPlanning.findOne({ position });
-            if (isPositionExist) {
+        // Only update position if provided and it differs from the current one
+        if (position) {
+            const userPosition = await User.findOne({ position });
+
+            if (!userPosition) {
+                return res.status(400).json({ success: false, message: "Position not found in Users!" });
+            }
+
+            // Check if the position already exists in another compensation plan
+            const isPositionExist = await CompensationPlanning.findOne({ position: userPosition._id });
+            if (isPositionExist && isPositionExist._id.toString() !== compensationPlan._id.toString()) {
                 return res.status(400).json({ success: false, message: "Position already exists!" });
             }
+
+            // Update position only if it's different from the current one
+            if (userPosition._id.toString() !== compensationPlan.position.toString()) {
+                compensationPlan.position = userPosition._id;
+            }
         }
+
+        // Handle allowances (same logic as in create)
         let formattedAllowances = compensationPlan.allowances;
         if (allowances) {
             if (!Array.isArray(allowances)) {
@@ -61,21 +93,24 @@ export const updateCompensationPlan = async (req, res) => {
             });
         }
 
-        compensationPlan.position = position || compensationPlan.position;
+        // Update the other fields if provided
         compensationPlan.hourlyRate = hourlyRate || compensationPlan.hourlyRate;
         compensationPlan.overTimeRate = overTimeRate || compensationPlan.overTimeRate;
         compensationPlan.holidayRate = holidayRate || compensationPlan.holidayRate;
         compensationPlan.allowances = formattedAllowances;
 
+        // Save the updated compensation plan
         await compensationPlan.save();
 
-        res.status(200).json({success: true,message: "Compensation plan updated successfully!",compensationPlan,});
+        res.status(200).json({ success: true, message: "Compensation plan updated successfully!", compensationPlan });
 
     } catch (error) {
-        console.log(`Error in updating compensation plans: ${error.message}`);
+        console.log(`Error in updating compensation plan: ${error.message}`);
         res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
+
+
 
 
 export const deleteCompensationPlan = async (req,res) => {

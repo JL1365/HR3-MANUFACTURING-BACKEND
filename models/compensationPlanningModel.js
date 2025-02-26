@@ -2,9 +2,8 @@ import mongoose from "mongoose";
 
 const compensationPlanningSchema = new mongoose.Schema({
     position: {
-        type: String,
-        required: true,
-        unique: true
+        type: mongoose.Schema.Types.ObjectId,
+        ref:"User",
     },
     hourlyRate: {
         type: Number,
