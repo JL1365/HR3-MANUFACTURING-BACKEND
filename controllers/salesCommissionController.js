@@ -2,7 +2,7 @@ import { SalesCommission } from "../models/salesCommissionModel.js";
 
 export const createSalesCommission = async (req, res) => {
     try {
-        const { salesCommissionName, targetAmount, commissionRate, status } = req.body;
+        const { salesCommissionName, targetAmount, commissionRate, status,assignedTo } = req.body;
         
         if (!salesCommissionName || !targetAmount || !commissionRate) {
             return res.status(400).json({ message: "All fields are required." });
@@ -12,7 +12,8 @@ export const createSalesCommission = async (req, res) => {
             salesCommissionName,
             targetAmount,
             commissionRate,
-            status: status || "Not Available"
+            status: status || "Not Available",
+            assignedTo
         });
 
         await newCommission.save();
@@ -25,7 +26,8 @@ export const createSalesCommission = async (req, res) => {
 
 export const getAllSalesCommission = async (req, res) => {
     try {
-        const allSalesCommissions = await SalesCommission.find({})
+        const allSalesCommissions = await SalesCommission.find().populate("assignedTo.userId", "firstName lastName");
+
         if(allSalesCommissions.length === 0) {
             return res.status(404).json("No sales Commission found!")
         }
@@ -337,7 +339,14 @@ export const getAllAssignedSalesCommissions = async (req, res) => {
 export const getAllEmployeeSalesStatus = async (req, res) => {
     try {
         const employeeSalesStatus = await EmployeeSalesCommission.find()
-        .select("userId salesStatus totalSales");
+            .populate({
+                path: "userId",
+                select: "firstName lastName"
+            })
+            .populate({
+                path: "salesCommissionId",
+                select: "salesCommissionName targetAmount"
+            });
 
         return res.status(200).json({
             message: "All employee sales status retrieved successfully.",
