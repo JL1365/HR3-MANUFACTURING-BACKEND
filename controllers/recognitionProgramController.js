@@ -99,7 +99,9 @@ export const getMyRecognitionAwards = async (req, res) => {
             return res.status(401).json({message:'User not authenticated.'});
         }
 
-        const myRecognitions = await RecognitionProgram.find({ userId: req.user._id});
+        const myRecognitions = await RecognitionProgram.find({ userId: req.user._id})
+        .populate("incentiveId", "incentiveName")
+      .exec()
 
         return res.status(200).json({ data:myRecognitions });
     } catch (error) {
