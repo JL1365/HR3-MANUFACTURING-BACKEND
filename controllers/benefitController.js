@@ -87,3 +87,36 @@ export const deleteBenefit = async (req,res) => {
         return res.status(500).json({ message: "Internal server error!" });
     }
 }
+
+import { BenefitRequest } from "../models/benefitRequestModel.js";
+import { BenefitDeduction } from "../models/benefitDeductionModel.js";
+
+export const getAllEmployeeBenefitDetails = async (req, res) => {
+    try {
+        const benefitRequests = await BenefitRequest.find({})
+            .populate('userId', 'firstName lastName')
+            .populate('benefitId', 'benefitName');
+
+        const benefitDeductions = await BenefitDeduction.find()
+            .populate('userId')
+            .populate({
+                path: 'BenefitRequestId',
+                populate: {
+                    path: 'benefitId',
+                    model: 'Benefit'
+                }
+            })
+            .select("amount createdAt")
+            .exec();
+
+        return res.status(200).json({
+            benefitRequests,
+            benefitDeductions,
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Error fetching benefit details." });
+    }
+};
+
