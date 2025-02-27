@@ -18,8 +18,11 @@ import salesCommissionRoute from './routes/salesCommissionRoute.js';
 import recognitionProgramRoute from './routes/recognitionProgramRoute.js';
 
 import compensationRoute from './routes/compensationPlanningRoute.js';
+import penaltyRoute from './routes/penaltyRoute.js';
+import violationRoute from './routes/violationRoute.js';
 
 import salaryRequestRoute from './routes/salaryRequestRoute.js';
+
 
 dotenv.config(); //loads variable defined in .env
 connectDB(); //Establishes a connection to MongoDB 
@@ -47,6 +50,8 @@ app.use("/api/salesCommission",salesCommissionRoute);
 app.use("/api/recognitionProgram",recognitionProgramRoute);
 
 app.use("/api/compensation",compensationRoute);
+app.use("/api/penalty",penaltyRoute);
+app.use("/api/violation",violationRoute);
 
 app.use("/api/salaryRequest",salaryRequestRoute);
 
