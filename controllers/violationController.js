@@ -4,9 +4,9 @@ import { User } from "../models/userModel.js";
 
 export const createViolation = async (req, res) => {
   try {
-    const { userId, violationType, penaltyLevel, violationDate, comments } = req.body;
+    const { userId, penaltyLevel, violationDate, comments } = req.body;
 
-    if (!userId || !violationType || !penaltyLevel || !violationDate) {
+    if (!userId|| !penaltyLevel || !violationDate) {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
@@ -22,7 +22,6 @@ export const createViolation = async (req, res) => {
 
     const newViolation = new Violation({
       userId,
-      violationType,
       penaltyLevel,
       violationDate,
       comments
@@ -83,6 +82,25 @@ export const deleteViolation = async (req, res) => {
     }
 
     return res.status(200).json({ message: 'Violation deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Server error', error });
+  }
+};
+
+export const getMyViolations = async (req, res) => {
+  try {
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+
+    const myViolations = await Violation.find({ userId: req.user._id })
+      .populate('penaltyLevel')
+    if (!myViolations.length) {
+      return res.status(404).json({ message: 'No violations found for this user' });
+    }
+
+    return res.status(200).json({ myViolations });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Server error', error });

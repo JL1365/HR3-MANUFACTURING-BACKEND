@@ -7,10 +7,6 @@ const violationSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    violationType: {
-      type: String,
-      required: true,
-    },
     penaltyLevel: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "PenaltyLevel", 
