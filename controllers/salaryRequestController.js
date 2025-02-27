@@ -1,3 +1,4 @@
+import { RequestSettings } from "../models/requestSettingModel.js";
 import { SalaryRequest } from "../models/salaryRequestModel.js";
 
 export const requestSalaryDistribution = async (req, res) => {
@@ -7,9 +8,10 @@ export const requestSalaryDistribution = async (req, res) => {
         if (!req.user || !req.user._id) {
             return res.status(401).json({ message: 'User not authenticated.' });
         }
-        const requestedSalaryDistributions = await SalaryRequest.find();
-        if(requestedSalaryDistributions.length > 0 && !requestedSalaryDistributions[0].isAvailable){
-            return res.status(403).json({message:'Salary requests are currently not available.'});
+
+        const settings = await RequestSettings.findOne();
+        if (!settings || !settings.isAvailable) {
+            return res.status(403).json({ message: 'Salary requests are currently not available.' });
         }
 
         const existingRequest = await SalaryRequest.findOne({ userId: req.user._id, status: 'Pending' });
@@ -22,6 +24,7 @@ export const requestSalaryDistribution = async (req, res) => {
             paymentMethod,
             gCashNumber: paymentMethod === 'GCash' ? gCashNumber : null,
         });
+
         await newRequestSalaryDistribution.save();
 
         return res.status(201).json({ message: 'Salary request created successfully.', newRequestSalaryDistribution });
@@ -88,16 +91,15 @@ export const toggleRequestAvailability = async (req, res) => {
             return res.status(403).json({ message: 'Access forbidden: Only managers can perform this action.' });
         }
 
-        const requestedSalaryDistributions = await SalaryRequest.find();
-        const isAvailable = requestedSalaryDistributions.length > 0 && requestedSalaryDistributions[0].isAvailable;
-
-        if (isAvailable) {
-            await SalaryRequest.updateMany({}, { isAvailable: false });
-            return res.status(200).json({ message: 'Salary requests forbidden.' });
-        } else {
-            await SalaryRequest.updateMany({}, { isAvailable: true });
-            return res.status(200).json({ message: 'Salary requests reinstated.' });
+        let settings = await RequestSettings.findOne();
+        if (!settings) {
+            settings = await RequestSettings.create({ isAvailable: false });
         }
+
+        settings.isAvailable = !settings.isAvailable;
+        await settings.save();
+
+        return res.status(200).json({ message: `Salary requests ${settings.isAvailable ? 'enabled' : 'disabled'}.` });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: 'Server error', error: error.message });

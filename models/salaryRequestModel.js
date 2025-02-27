@@ -28,10 +28,6 @@ const salaryRequestSchema = new mongoose.Schema({
       type: String,
       enum: ["Pending", "Rejected", "Approved"],
       default: 'Pending',
-    },
-    isAvailable: {
-      type: Boolean,
-      default: true,
     }
   },
   { timestamps: true });
