@@ -86,3 +86,38 @@ export const deleteIncentive = async (req,res) => {
         return res.status(500).json({ message: "Internal server error!" });
     }
 }
+
+import { IncentiveTracking } from "../models/incentiveTrackingModel.js";
+import { RecognitionProgram } from "../models/recognitionProgramModel.js";
+import { EmployeeSalesCommission } from "../models/employeeSalesCommissionModel.js";
+
+export const getAllEmployeeIncentiveDetails = async (req, res) => {
+    try {
+        const incentiveTrackings = await IncentiveTracking.find()
+            .populate('userId incentiveId');
+
+        const allRecognitionPrograms = await RecognitionProgram.find({})
+            .populate('userId', 'firstName lastName');
+
+        const employeeSalesStatus = await EmployeeSalesCommission.find()
+            .populate({
+                path: "userId",
+                select: "firstName lastName"
+            })
+            .populate({
+                path: "salesCommissionId",
+                select: "salesCommissionName targetAmount"
+            });
+
+        // Send response with all fetched data
+        return res.status(200).json({
+            incentiveTrackings,
+            allRecognitionPrograms,
+            employeeSalesStatus
+        });
+
+    } catch (error) {
+        console.error("Error fetching employee incentive details:", error);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+};

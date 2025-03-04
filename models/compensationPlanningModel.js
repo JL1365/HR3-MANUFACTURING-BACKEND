@@ -21,11 +21,10 @@ const compensationPlanningSchema = new mongoose.Schema({
         type: { type: String, required: true },  
         amount: { type: Number, required: true }
     }],
-    approvalStatus: {
-        type: String,
-        enum: ['Approved', 'Pending', 'Rejected'],
-        default: 'Pending'
-    },
+    benefits: [{
+        benefitType: { type: String, required: true },  
+        deductionsAmount: { type: Number, required: true }
+    }]
 }, { timestamps: true });
 
 export const CompensationPlanning = mongoose.model("CompensationPlanning", compensationPlanningSchema);

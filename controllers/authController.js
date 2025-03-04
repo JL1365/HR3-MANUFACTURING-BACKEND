@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { User } from "../models/userModel.js";
 import { generateTokenAndSetCookie } from "../utils/generateTokenAndSetCookie.js";
 
@@ -61,18 +61,59 @@ export const RegisterAccount = async (req, res) => {
     }
 };
 
-export const getAllUsers = async (req,res) => {
+import axios from "axios";
+import { generateServiceToken } from "../middleware/gatewayTokenGenerator.js";
+
+export const getAllUsers = async (req, res) => {
     try {
-        const users = await User.find({}); //Get all users
-        if(users.length === 0){
-            return res.status(404).json({message:"No users found!"}) //verifying if there are no users found
+        const serviceToken = generateServiceToken(); 
+
+        const response = await axios.get(
+            `${process.env.API_GATEWAY_URL}/admin/get-accounts`,
+            {
+                headers: { Authorization: `Bearer ${serviceToken}` },
+            }
+        );
+
+        const users = response.data; 
+
+        if (!users || users.length === 0) {
+            return res.status(404).json({ message: "No users found!" });
         }
-        res.status(200).json({message:"Fetching users successfully!",users});
+
+        return res.status(200).json({ message: "Fetching users successfully!", users });
     } catch (error) {
-        console.log(`Error in getting users: ${error.message}`);
-        return res.status(500).json({ message: "Internal server error" });
+        console.error(`Error in getting users: ${error.message}`);
+        return res.status(500).json({ message: "Internal server error", error: error.message });
     }
-}
+};
+
+export const getAllPositions = async (req, res) => {
+    try {
+        const serviceToken = generateServiceToken();
+
+        const response = await axios.get(
+            `${process.env.API_GATEWAY_URL}/admin/get-accounts`,
+            {
+                headers: { Authorization: `Bearer ${serviceToken}` },
+            }
+        );
+
+        const users = response.data;
+
+        if (!users || users.length === 0) {
+            return res.status(404).json({ message: "No users found!" });
+        }
+
+        // Extract positions and remove duplicates
+        const positions = [...new Set(users.map(user => user.position).filter(position => position))];
+
+        return res.status(200).json({ message: "Fetching unique positions successfully!", positions });
+    } catch (error) {
+        console.error(`Error in getting users: ${error.message}`);
+        return res.status(500).json({ message: "Internal server error", error: error.message });
+    }
+};
 
 export const loginAccount = async (req,res) => {
     try {
@@ -140,7 +181,7 @@ export const checkAuth = (req, res) => {
 
 export const changeHr = async (req, res) => {
     try {
-        const { changeHRNumber } = req.body;
+    const { changeHRNumber } = req.body;
 
         if (!changeHRNumber) {
             return res.status(400).json({ success: false, message: "Change HR number is required." });

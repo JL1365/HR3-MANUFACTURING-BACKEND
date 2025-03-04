@@ -2,6 +2,9 @@ import { BenefitRequest } from "../models/benefitRequestModel.js";
 import { BenefitDeduction } from "../models/benefitDeductionModel.js";
 import { BenefitDeductionHistory } from "../models/benefitDeductionHistory.js";
 
+import axios from 'axios'; // Import axios for API calls
+import { generateServiceToken } from "../middleware/gatewayTokenGenerator.js";
+
 export const addUserDeduction = async (req, res) => {
   try {
     const { userId, benefitRequestId, amount } = req.body;
@@ -14,16 +17,39 @@ export const addUserDeduction = async (req, res) => {
 
     const numericAmount = parseFloat(amount);
 
-    // Find the associated benefit request for the user
+    // Generate service token to authenticate with the external API
+    const serviceToken = generateServiceToken();
+
+    // Fetch users from the external API
+    const response = await axios.get(
+      `${process.env.API_GATEWAY_URL}/admin/get-accounts`,
+      {
+        headers: { Authorization: `Bearer ${serviceToken}` },
+      }
+    );
+
+    const users = response.data;
+    const employeeExists = users.find(user => user._id === userId);
+
+    if (!employeeExists) {
+      return res.status(400).json({
+        message: "The user does not exist in the system.",
+      });
+    }
+
+
     const benefitRequest = await BenefitRequest.findOne({
       _id: benefitRequestId,
       userId,
-      status: "Approved", // Only look for approved requests
+      status: "Approved", 
     });
 
-    // Check if the benefit request is found and approved
+
     if (!benefitRequest) {
-      return res.status(400).json({message: "You cannot add a deduction because the benefit request is not approved.",});}
+      return res.status(400).json({
+        message: "You cannot add a deduction because the benefit request is not approved.",
+      });
+    }
 
     const newDeduction = new BenefitDeduction({
       userId,
@@ -49,7 +75,7 @@ export const addUserDeduction = async (req, res) => {
       deductionHistory = new BenefitDeductionHistory({
         userId,
         benefitRequestId: benefitRequest._id,
-        totalAmount: numericAmount, 
+        totalAmount: numericAmount,
       });
 
       await deductionHistory.save();
@@ -100,32 +126,68 @@ export const getMyDeduction = async (req, res) => {
   }
 };
 
-
 export const getAllBenefitDeductions = async (req, res) => {
   try {
-    // Fetch all benefit deductions
+
     const allDeductions = await BenefitDeduction.find()
-      .populate('userId')
       .populate({
         path: 'BenefitRequestId',
         populate: {
           path: 'benefitId',
-          model: 'Benefit'
-        }
+          model: 'Benefit',
+        },
       })
       .exec();
 
     if (allDeductions.length === 0) {
-      return res.status(404).json({message: "No benefit deductions found.",});
+      return res.status(404).json({
+        message: 'No benefit deductions found.',
+      });
     }
 
-    res.status(200).json({message: "All benefit deductions retrieved successfully.",deductions: allDeductions,});
+    // Generate service token for API authentication
+    const serviceToken = generateServiceToken();
+
+    // Fetch users from the external API
+    const response = await axios.get(
+      `${process.env.API_GATEWAY_URL}/admin/get-accounts`,
+      {
+        headers: { Authorization: `Bearer ${serviceToken}` },
+      }
+    );
+
+    const users = response.data; // List of users from the external API
+
+    // Iterate through the deductions and map user data from the API
+    const updatedAllDeductions = allDeductions.map((deduction) => {
+      const userId = deduction.userId ? deduction.userId.toString() : null;
+
+      if (!userId) {
+        console.log("No userId found for deduction:", deduction._id);
+        return {
+          ...deduction.toObject(), // Convert mongoose document to plain object
+          user: null, // Add null user if no userId
+        };
+      }
+
+      // Attach user data from the external API
+      const user = users.find((user) => user._id === userId);
+
+      return {
+        ...deduction.toObject(),
+        user: user ? { firstName: user.firstName, lastName: user.lastName } : null, // Map user data from API
+      };
+    });
+
+    res.status(200).json({
+      message: 'All benefit deductions retrieved successfully.',
+      deductions: updatedAllDeductions,
+    });
   } catch (error) {
     console.error(`Error in fetching all benefit deductions: ${error.message}`);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
-
 
 export const updateUserDeduction = async (req, res) => {
   try {

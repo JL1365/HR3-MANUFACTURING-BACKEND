@@ -79,6 +79,7 @@ import { SalesHistory } from "../models/salesHistoryModel.js";
 import upload from "../config/multerConfig.js";
 import mongoose from 'mongoose'
 import cloudinary from "../config/cloudinaryConfig.js";
+import { generateServiceToken } from "../middleware/gatewayTokenGenerator.js";
 
 //EMPLOYEE SALES
 export const assignSalesCommission = async (req, res) => {
@@ -93,11 +94,11 @@ export const assignSalesCommission = async (req, res) => {
         if (!salesCommissionId) {
             return res.status(400).json({ message: "Sales commission ID is required." });
         }
-
+/* 
         const existingEmployee = await User.findById(userId);
         if (!existingEmployee) {
             return res.status(404).json({ message: "Employee not found." });
-        }
+        } */
 
         const existingCommission = await SalesCommission.findById(salesCommissionId);
         if (!existingCommission) {
@@ -320,21 +321,56 @@ export const updateConfirmationStatus = async (req, res) => {
     }
 };
 
+import axios from 'axios'
 export const getAllAssignedSalesCommissions = async (req, res) => {
     try {
+        // Fetch commissions
         const assignedCommissions = await SalesCommission.find({
             "assignedTo.assignStatus": { $in: ["Assigned", "Not Assigned"] }
-        }).populate("assignedTo.userId");
+        });
+
+        // Fetch users from external API
+        const serviceToken = generateServiceToken();
+        const response = await axios.get(
+            `${process.env.API_GATEWAY_URL}/admin/get-accounts`,
+            {
+                headers: { Authorization: `Bearer ${serviceToken}` },
+            }
+        );
+
+        const users = response.data; // List of users from the external API
+
+        // Manually match users to their respective commission assignments
+        const updatedAssignedCommissions = assignedCommissions.map(commission => {
+            const updatedAssignedTo = commission.assignedTo.map(assignment => {
+                const userId = assignment.userId?.toString();
+                // Find the corresponding user from the external API response
+                const user = users.find(u => u._id === userId);
+
+                return {
+                    ...assignment.toObject ? assignment.toObject() : assignment,
+                    user: user 
+                        ? { firstName: user.firstName, lastName: user.lastName } 
+                        : { firstName: "Unassigned", lastName: "User" },  // Default if no user is found
+                };
+            });
+
+            return {
+                ...commission.toObject(),
+                assignedTo: updatedAssignedTo,
+            };
+        });
 
         return res.status(200).json({
             message: "All assigned and not assigned sales commissions retrieved successfully.",
-            assignedCommissions,
+            assignedCommissions: updatedAssignedCommissions,
         });
     } catch (error) {
         console.error("Server Error:", error);
         return res.status(500).json({ message: "Server Error", error: error.message });
     }
 };
+
 
 export const getAllEmployeeSalesStatus = async (req, res) => {
     try {

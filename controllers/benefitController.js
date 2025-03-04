@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { Benefit } from "../models/benefitModel.js";
+import axios from 'axios'
 
 export const createBenefit = async (req,res) => {
     try {
@@ -92,31 +93,111 @@ import { BenefitRequest } from "../models/benefitRequestModel.js";
 import { BenefitDeduction } from "../models/benefitDeductionModel.js";
 
 export const getAllEmployeeBenefitDetails = async (req, res) => {
-    try {
-        const benefitRequests = await BenefitRequest.find({})
-            .populate('userId', 'firstName lastName')
-            .populate('benefitId', 'benefitName');
+  try {
+    // Get approved benefit requests
+    const benefitRequests = await BenefitRequest.find({status:"Approved"})
+      .populate('benefitId', 'benefitName');
 
-        const benefitDeductions = await BenefitDeduction.find()
-            .populate('userId')
-            .populate({
-                path: 'BenefitRequestId',
-                populate: {
-                    path: 'benefitId',
-                    model: 'Benefit'
-                }
-            })
-            .select("amount createdAt")
-            .exec();
+    // Get benefit deductions
+    const benefitDeductions = await BenefitDeduction.find()
+      .populate({
+        path: 'BenefitRequestId',
+        populate: {
+          path: 'benefitId',
+          model: 'Benefit'
+        }
+      })
+      .select("amount createdAt")
+      .exec();
 
-        return res.status(200).json({
-            benefitRequests,
-            benefitDeductions,
-        });
+    // Generate service token for API authentication
+    const serviceToken = generateServiceToken();
 
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "Error fetching benefit details." });
+    // Fetch users from the external API
+    const response = await axios.get(
+      `${process.env.API_GATEWAY_URL}/admin/get-accounts`,
+      {
+        headers: { Authorization: `Bearer ${serviceToken}` },
+      }
+    );
+
+    const users = response.data;
+
+    // Map user details to benefit requests
+    const mappedBenefitRequests = benefitRequests.map(request => {
+      const userId = request.userId.toString();
+      const user = users.find(u => u._id === userId);
+      
+      return {
+        ...request.toObject(),
+        userId: user ? { // Keep the userId field but replace with user object
+          _id: userId,
+          firstName: user.firstName,
+          lastName: user.lastName
+        } : null
+      };
+    });
+    
+    // Map to benefit deductions (keep the original structure for IDs)
+    const mappedBenefitDeductions = benefitDeductions.map(deduction => {
+      return {
+        ...deduction.toObject()
+      };
+    });
+
+    return res.status(200).json({
+      benefitRequests: mappedBenefitRequests,
+      benefitDeductions: mappedBenefitDeductions,
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Error fetching benefit details." });
+  }
+};
+import { BenefitDocument } from "../models/admin/benefitDocumentsModel.js";
+import { generateServiceToken } from "../middleware/gatewayTokenGenerator.js";
+
+export const uploadDocument = async (req, res) => {
+  try {
+    console.log(req.file); 
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
     }
+
+    const { description,remarks } = req.body;
+
+    if (!description) {
+      return res.status(400).json({ message: 'Description is required' });
+    }
+
+    const fileUrl = req.file.path;
+
+    const newDocument = new BenefitDocument({
+      documentFile: fileUrl,
+      description,
+      remarks:remarks || "",
+    });
+
+    await newDocument.save();
+
+    res.status(200).json({ message: 'File uploaded successfully', document: newDocument });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error uploading file', error: error.message });
+  }
 };
 
+export const getUploadedDocuments = async (req, res) => {
+  try {
+    const documents = await BenefitDocument.find({});
+    if (documents.length === 0) {
+      return res.status(404).json({ message: "No documents found!" });
+    }
+    res.status(200).json({ message: "Fetching documents success:", documents });
+  } catch (error) {
+    console.log(`Error in fetching documents: ${error.message}`);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};

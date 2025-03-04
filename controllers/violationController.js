@@ -36,7 +36,7 @@ export const createViolation = async (req, res) => {
   }
 };
 
-export const getViolations = async (req, res) => {
+export const getEmployeeViolations = async (req, res) => {
   try {
     const employeeViolations = await Violation.find().populate('penaltyLevel')
     .populate('userId', 'firstName lastName');

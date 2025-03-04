@@ -1,30 +1,52 @@
 import { CompensationPlanning } from "../models/compensationPlanningModel.js";
 import { StandardCompensation } from "./standardCompensationModel.js";
 import { User } from "../models/userModel.js";
-
+import { generateServiceToken } from "../middleware/gatewayTokenGenerator.js";
+import axios from 'axios'
 
 export const createCompensationPlan = async (req, res) => {
-    const { position, hourlyRate, overTimeRate, holidayRate, allowances } = req.body;
+    const { position, hourlyRate, overTimeRate, holidayRate, allowances,benefits } = req.body;
 
     try {
-        const userPosition = await User.findOne({ position });
+
+        if (!Array.isArray(allowances) || !Array.isArray(benefits)) {
+            return res.status(400).json({ success: false, message: "Allowances and benefits must be arrays!" });
+        }
+        const serviceToken = generateServiceToken();
+
+        const response = await axios.get(
+            `${process.env.API_GATEWAY_URL}/admin/get-accounts`,
+            {
+                headers: { Authorization: `Bearer ${serviceToken}` },
+            }
+        );
+
+        const users = response.data;
+
+        if (!users || users.length === 0) {
+            return res.status(404).json({ success: false, message: "No users found!" });
+        }
+
+        const userPosition = users.find(user => user.position === position);
 
         if (!userPosition) {
             return res.status(400).json({ success: false, message: "Position not found in Users!" });
         }
-
+        
         const isPositionExist = await CompensationPlanning.findOne({ position: userPosition._id });
+        
         if (isPositionExist) {
             return res.status(400).json({ success: false, message: "Position already exists!" });
         }
-
+        
         const newPlan = new CompensationPlanning({
             position: userPosition._id,
             hourlyRate,
             overTimeRate,
             holidayRate,
-            allowances
-        });
+            allowances,
+            benefits
+        });        
 
         await newPlan.save();
 
@@ -35,21 +57,73 @@ export const createCompensationPlan = async (req, res) => {
     }
 };
 
-
-export const getCompensationPlan = async (req,res) => {
+export const getCompensationPlan = async (req, res) => {
     try {
-        const compensationPlans = await CompensationPlanning.find()
-        .populate("position","position")
-        res.status(200).json({success:true,data:compensationPlans});
+        const compensationPlans = await CompensationPlanning.find();
+
+        const serviceToken = generateServiceToken();
+        const response = await axios.get(`${process.env.API_GATEWAY_URL}/admin/get-accounts`, {
+            headers: { Authorization: `Bearer ${serviceToken}` }
+        });
+
+        const users = response.data; 
+
+        const positionMap = {};
+        users.forEach(user => {
+            positionMap[user._id] = user.position; 
+        });
+
+        const formattedPlans = compensationPlans.map(plan => ({
+            ...plan._doc,
+            positionName: positionMap[plan.position] || "Unknown Position"
+        }));
+
+        res.status(200).json({ success: true, data: formattedPlans });
     } catch (error) {
-        console.log(`error in getting compensation plans ${error}`);
-        res.status(500).json({success:false,message:"Server error",error:error.message});
+        console.error(`Error in getting compensation plans: ${error.message}`);
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+};
+
+// not yet done
+export const getBenefitsAndDeductions = async (req, res) => {
+    try {
+        // Fetch all compensation plans (only selecting benefits and deductions)
+        const compensationPlans = await CompensationPlanning.find({}, "position benefits");
+
+        // Fetch positions from the external API
+        const serviceToken = generateServiceToken();
+        const response = await axios.get(`${process.env.API_GATEWAY_URL}/admin/get-accounts`, {
+            headers: { Authorization: `Bearer ${serviceToken}` }
+        });
+
+        const users = response.data;  // Assuming it returns an array of users with positions
+
+        // Create a mapping of ObjectId -> Position Name
+        const positionMap = {};
+        users.forEach(user => {
+            positionMap[user._id] = user.position;  // Map ObjectId to position name
+        });
+
+        // Update compensationPlans to include position names
+        const filteredPlans = compensationPlans.map(plan => ({
+            positionName: positionMap[plan.position] || "Unknown Position",  // Lookup position name
+            benefits: plan.benefits.map(b => ({
+                benefitType: b.benefitType,
+                deductionsAmount: b.deductionsAmount
+            }))
+        }));
+
+        res.status(200).json({ success: true, data: filteredPlans });
+    } catch (error) {
+        console.error(`Error in getting compensation plans: ${error.message}`);
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
 
 export const updateCompensationPlan = async (req, res) => {
     const { id } = req.params;
-    const { position, hourlyRate, overTimeRate, holidayRate, allowances } = req.body;
+    const { position, hourlyRate, overTimeRate, holidayRate, allowances,benefits } = req.body;
 
     try {
         const compensationPlan = await CompensationPlanning.findById(id).populate("position");
@@ -58,7 +132,6 @@ export const updateCompensationPlan = async (req, res) => {
             return res.status(404).json({ success: false, message: "Compensation plan not found." });
         }
 
-        // Only update position if provided and it differs from the current one
         if (position) {
             const userPosition = await User.findOne({ position });
 
@@ -66,19 +139,16 @@ export const updateCompensationPlan = async (req, res) => {
                 return res.status(400).json({ success: false, message: "Position not found in Users!" });
             }
 
-            // Check if the position already exists in another compensation plan
             const isPositionExist = await CompensationPlanning.findOne({ position: userPosition._id });
             if (isPositionExist && isPositionExist._id.toString() !== compensationPlan._id.toString()) {
                 return res.status(400).json({ success: false, message: "Position already exists!" });
             }
 
-            // Update position only if it's different from the current one
             if (userPosition._id.toString() !== compensationPlan.position.toString()) {
                 compensationPlan.position = userPosition._id;
             }
         }
 
-        // Handle allowances (same logic as in create)
         let formattedAllowances = compensationPlan.allowances;
         if (allowances) {
             if (!Array.isArray(allowances)) {
@@ -92,14 +162,27 @@ export const updateCompensationPlan = async (req, res) => {
                 return { type: allowance.type, amount: allowance.amount };
             });
         }
+        let formattedBenefits = compensationPlan.benefits;
+        if (benefits) {
+            if (!Array.isArray(benefits)) {
+                return res.status(400).json({ success: false, message: "benefits must be an array!" });
+            }
 
-        // Update the other fields if provided
+            formattedBenefits = benefits.map((benefit) => {
+                if (typeof benefit !== "object" || !benefit.benefitType || !benefit.deductionsAmount) {
+                    return res.status(400).json({ success: false, message: "Each benefit must have a 'benefitType' and 'deductionsAmount'." });
+                }
+                return { benefitType: benefit.benefitType, deductionsAmount: benefit.deductionsAmount };
+            });
+            
+        }
+
         compensationPlan.hourlyRate = hourlyRate || compensationPlan.hourlyRate;
         compensationPlan.overTimeRate = overTimeRate || compensationPlan.overTimeRate;
         compensationPlan.holidayRate = holidayRate || compensationPlan.holidayRate;
         compensationPlan.allowances = formattedAllowances;
+        compensationPlan.benefits = formattedBenefits;
 
-        // Save the updated compensation plan
         await compensationPlan.save();
 
         res.status(200).json({ success: true, message: "Compensation plan updated successfully!", compensationPlan });

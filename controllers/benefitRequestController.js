@@ -1,15 +1,30 @@
 import { BenefitRequest } from "../models/benefitRequestModel.js";
 import { Benefit } from "../models/benefitModel.js";
 import upload from '../config/multerConfig.js';
+import { generateServiceToken } from "../middleware/gatewayTokenGenerator.js";
+import axios from 'axios'
 
 export const applyBenefit = async (req, res) => {
     try {
       const userId = req.user._id;
       const { benefitId } = req.body;
   
-      if (!req.user || !userId) {
-        return res.status(401).json({ message: 'User not authenticated.' });
-      }
+      if (!benefitId) {
+        return res.status(400).json({ message: "Missing required fields." });
+    }
+
+    // Generate service token
+    const serviceToken = generateServiceToken();
+    // Fetch user from external API
+    const response = await axios.get(
+        `${process.env.API_GATEWAY_URL}/admin/get-accounts`,
+        {
+            headers: { Authorization: `Bearer ${serviceToken}` },
+        }
+    );
+
+    const users = response.data;
+    const employeeExists = users.find(user => user._id === userId);
   
       const existingRequest = await BenefitRequest.findOne({ userId, benefitId });
       if (existingRequest) {
@@ -18,7 +33,7 @@ export const applyBenefit = async (req, res) => {
         });
       }
   
-      // Fetch the benefit to check if it requires a request
+   
       const benefit = await Benefit.findById(benefitId);
       if (!benefit) {
         return res.status(404).json({
@@ -26,9 +41,9 @@ export const applyBenefit = async (req, res) => {
         });
       }
   
-      // Check if upload is needed
+   
       if (benefit.isNeedRequest) {
-        // Check if req.files exists and contains the required fields
+     
         if (!req.files || !req.files.frontId || !req.files.backId) {
           return res.status(400).json({
             message: "Please upload both front and back ID images.",
@@ -36,7 +51,6 @@ export const applyBenefit = async (req, res) => {
         }
       }
   
-      // Proceed with saving the uploaded files if they exist
       const frontIdUrl = req.files.frontId ? req.files.frontId[0].path : null;
       const backIdUrl = req.files.backId ? req.files.backId[0].path : null;
   
@@ -76,20 +90,51 @@ export const getMyApplyRequests = async (req,res) => {
     }
 };
 
-export const getAllAppliedRequest = async(req,res) => {
+
+export const getAllAppliedRequest = async (req, res) => {
     try {
+        // Fetch all benefit requests
         const allRequestBenefit = await BenefitRequest.find({})
-        .populate('userId', 'firstName lastName')
-        .populate('benefitId', 'benefitName');
-        if(allRequestBenefit === 0) {
-            return res.status(404).json({message:"No request Found!"});
+        .populate("benefitId")
+
+
+        if (allRequestBenefit.length === 0) {
+            return res.status(404).json({ message: "No request found!" });
         }
-        res.status(200).json({status:true,allRequestBenefit})
+
+        // Generate service token
+        const serviceToken = generateServiceToken();
+
+        // Fetch user accounts from external API
+        const response = await axios.get(
+            `${process.env.API_GATEWAY_URL}/admin/get-accounts`,
+            {
+                headers: { Authorization: `Bearer ${serviceToken}` },
+            }
+        );
+
+        const users = response.data.accounts || response.data; // Adjust based on actual response
+
+        // Map requests with admin user details
+        const updatedRequestBenefit = allRequestBenefit.map((requestBenefit) => {
+            const user = users.find(
+                (user) => user._id.toString() === requestBenefit.userId.toString()
+            );
+
+            return {
+                ...requestBenefit.toObject(),
+                user: user
+                    ? { firstName: user.firstName, lastName: user.lastName }
+                    : { firstName: "Unknown", lastName: "User" },
+            };
+        });
+
+        res.status(200).json({ status: true, updatedRequestBenefit });
     } catch (error) {
-        console.log(`Error in getting all applied request: ${error.message}`);
-        return res.status(500).json({message:"Internal server error"});
+        console.error(`Error in getting all applied requests: ${error.message}`);
+        return res.status(500).json({ message: "Internal server error" });
     }
-}
+};
 
 
 export const updateApplyRequestStatus = async (req, res) => {
@@ -106,13 +151,11 @@ export const updateApplyRequestStatus = async (req, res) => {
       });
     }
 
-    // Find the current benefit request
     const currentRequest = await BenefitRequest.findById(id);
     if (!currentRequest) {
       return res.status(404).json({ message: "Benefit request not found." });
     }
 
-    // Check if the current status is one of the final statuses
     if (finalStatuses.includes(currentRequest.status)) {
       return res.status(400).json({message: `Cannot change status from ${currentRequest.status}. It has already been finalized.`,});
     }

@@ -1,5 +1,7 @@
 import { RequestSettings } from "../models/requestSettingModel.js";
 import { SalaryRequest } from "../models/salaryRequestModel.js";
+import { generateServiceToken } from "../middleware/gatewayTokenGenerator.js";
+import axios from "axios";
 
 export const requestSalaryDistribution = async (req, res) => {
     try {
@@ -50,11 +52,32 @@ export const getMySalaryDistributionRequests = async (req, res) => {
 
 export const getAllSalaryDistributionRequests = async (req, res) => {
     try {
-        const allSalaryDistributionRequests = await SalaryRequest.find()
-            .populate('userId', 'firstName lastName')
-            .exec();
+        // Generate service token
+        const serviceToken = generateServiceToken();
 
-        res.status(200).json({ success: true, data: allSalaryDistributionRequests });
+        // Fetch user details from external API
+        const response = await axios.get(
+            `${process.env.API_GATEWAY_URL}/admin/get-accounts`,
+            {
+                headers: { Authorization: `Bearer ${serviceToken}` }
+            }
+        );
+
+        const users = response.data; // Get users from API response
+
+        // Fetch all salary distribution requests
+        const allSalaryDistributionRequests = await SalaryRequest.find();
+
+        // Attach user firstName and lastName to salary distribution requests
+        const updatedSalaryDistributionRequests = allSalaryDistributionRequests.map(request => {
+            const user = users.find(user => user._id.toString() === request.userId.toString());
+            return {
+                ...request.toObject(),
+                user: user ? { firstName: user.firstName, lastName: user.lastName } : null
+            };
+        });
+
+        res.status(200).json({ success: true, data: updatedSalaryDistributionRequests });
     } catch (error) {
         console.log(`Error in getting salary requests: ${error}`);
         res.status(500).json({ success: false, message: "Server error", error: error.message });
