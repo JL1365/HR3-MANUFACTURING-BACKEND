@@ -49,7 +49,7 @@ authRoute.get("/check-auth",verifyToken,checkAuth);
 authRoute.put("/change-hr",verifyToken,changeHr);
 
 
-authRoute.get("/protected", verifyToken, async (req, res) => {
+authRoute.get("/protected-get-accounts-from-admin", verifyToken, async (req, res) => {
   try {
     // Generate the service token for API authentication
     const serviceToken = generateServiceToken();
