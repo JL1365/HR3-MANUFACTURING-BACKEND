@@ -85,33 +85,31 @@ export const getCompensationPlan = async (req, res) => {
     }
 };
 
-// not yet done
 export const getBenefitsAndDeductions = async (req, res) => {
     try {
-        // Fetch all compensation plans (only selecting benefits and deductions)
-        const compensationPlans = await CompensationPlanning.find({}, "position benefits");
 
-        // Fetch positions from the external API
+        const compensationPlans = await CompensationPlanning.find({}, "position benefits").lean();
+
         const serviceToken = generateServiceToken();
         const response = await axios.get(`${process.env.API_GATEWAY_URL}/admin/get-accounts`, {
             headers: { Authorization: `Bearer ${serviceToken}` }
         });
 
-        const users = response.data;  // Assuming it returns an array of users with positions
+        const users = response.data; 
 
-        // Create a mapping of ObjectId -> Position Name
-        const positionMap = {};
-        users.forEach(user => {
-            positionMap[user._id] = user.position;  // Map ObjectId to position name
-        });
 
-        // Update compensationPlans to include position names
+        const positionMap = users.reduce((acc, user) => {
+            acc[user._id.toString()] = user.position;
+            return acc;
+        }, {});
+
+   
         const filteredPlans = compensationPlans.map(plan => ({
-            positionName: positionMap[plan.position] || "Unknown Position",  // Lookup position name
-            benefits: plan.benefits.map(b => ({
-                benefitType: b.benefitType,
-                deductionsAmount: b.deductionsAmount
-            }))
+            positionName: positionMap[plan.position.toString()] || "Unknown Position",
+            benefits: Array.isArray(plan.benefits) ? plan.benefits.map(b => ({
+                benefitType: b.benefitType || "Unknown Benefit",
+                deductionsAmount: b.deductionsAmount || 0
+            })) : []
         }));
 
         res.status(200).json({ success: true, data: filteredPlans });

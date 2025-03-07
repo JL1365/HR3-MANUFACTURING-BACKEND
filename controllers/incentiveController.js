@@ -91,33 +91,73 @@ import { IncentiveTracking } from "../models/incentiveTrackingModel.js";
 import { RecognitionProgram } from "../models/recognitionProgramModel.js";
 import { EmployeeSalesCommission } from "../models/employeeSalesCommissionModel.js";
 
+import axios from "axios";
+import { generateServiceToken } from "../middleware/gatewayTokenGenerator.js";
+
 export const getAllEmployeeIncentiveDetails = async (req, res) => {
     try {
+        // Generate service token for authentication
+        const serviceToken = generateServiceToken();
+
+        // Fetch user accounts from external API (Admin accounts)
+        const response = await axios.get(
+            `${process.env.API_GATEWAY_URL}/admin/get-accounts`,
+            {
+                headers: { Authorization: `Bearer ${serviceToken}` },
+            }
+        );
+
+        const users = response.data; // List of users from API
+
+        // Fetch incentive tracking details
         const incentiveTrackings = await IncentiveTracking.find()
-            .populate('userId incentiveId');
+            .populate("incentiveId");
 
-        const allRecognitionPrograms = await RecognitionProgram.find({})
-            .populate('userId', 'firstName lastName');
+        // Fetch recognition programs
+        const allRecognitionPrograms = await RecognitionProgram.find();
 
-        const employeeSalesStatus = await EmployeeSalesCommission.find()
-            .populate({
-                path: "userId",
-                select: "firstName lastName"
-            })
-            .populate({
-                path: "salesCommissionId",
-                select: "salesCommissionName targetAmount"
-            });
+        // Fetch employee sales status
+        // const employeeSalesStatus = await EmployeeSalesCommission.find()
+        //     .populate({
+        //         path: "salesCommissionId",
+        //         select: "salesCommissionName targetAmount"
+        //     });
 
-        // Send response with all fetched data
+        // Attach user details from external API
+        const updatedIncentiveTrackings = incentiveTrackings.map(incentive => {
+            const user = users.find(user => user._id.toString() === incentive.userId?.toString());
+            return {
+                ...incentive.toObject(),
+                user: user ? { firstName: user.firstName, lastName: user.lastName } : null,
+            };
+        });
+
+        const updatedRecognitionPrograms = allRecognitionPrograms.map(program => {
+            const user = users.find(user => user._id.toString() === program.userId?.toString());
+            return {
+                ...program.toObject(),
+                user: user ? { firstName: user.firstName, lastName: user.lastName } : null,
+            };
+        });
+
+        // const updatedEmployeeSalesStatus = employeeSalesStatus.map(sales => {
+        //     const user = users.find(user => user._id.toString() === sales.userId?.toString());
+        //     return {
+        //         ...sales.toObject(),
+        //         user: user ? { firstName: user.firstName, lastName: user.lastName } : null,
+        //     };
+        // });
+
+        // Send response with processed data
         return res.status(200).json({
-            incentiveTrackings,
-            allRecognitionPrograms,
-            employeeSalesStatus
+            incentiveTrackings: updatedIncentiveTrackings,
+            allRecognitionPrograms: updatedRecognitionPrograms,
+            // employeeSalesStatus: updatedEmployeeSalesStatus
         });
 
     } catch (error) {
         console.error("Error fetching employee incentive details:", error);
-        return res.status(500).json({ message: "Internal Server Error" });
+        return res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
+

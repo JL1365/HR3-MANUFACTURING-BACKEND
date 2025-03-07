@@ -3,6 +3,7 @@ import { createRecognitionPrograms,
     deleteRecognitionProgram, 
     getAllRecognitionPrograms, 
     getMyRecognitionAwards, 
+    updateMyRecognitionProgramStatus, 
     updateRecognitionProgram 
 } from '../controllers/recognitionProgramController.js';
 import { verifyToken } from '../middleware/verifyToken.js';
@@ -15,5 +16,6 @@ recognitionProgramRoute.put("/update-recognition-program/:id", verifyToken, upda
 recognitionProgramRoute.delete("/delete-recognition-program/:id", verifyToken, deleteRecognitionProgram);
 
 recognitionProgramRoute.get("/get-my-recognition-programs",verifyToken,getMyRecognitionAwards);
+recognitionProgramRoute.put("/update-my-recognition-program-status/:id", updateMyRecognitionProgramStatus);
 
 export default recognitionProgramRoute;

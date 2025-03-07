@@ -22,6 +22,7 @@ import penaltyRoute from './routes/penaltyRoute.js';
 import violationRoute from './routes/violationRoute.js';
 
 import salaryRequestRoute from './routes/salaryRequestRoute.js';
+
 import integrationRoute from './routes/integrationRoute.js';
 
 

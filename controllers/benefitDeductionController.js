@@ -189,6 +189,32 @@ export const getAllBenefitDeductions = async (req, res) => {
   }
 };
 
+export const getTotalDeductions = async (req, res) => {
+  try {
+    // Get total sum of all benefit deductions
+    const totalDeductions = await BenefitDeduction.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalAmount: { $sum: "$amount" }
+        }
+      }
+    ]);
+
+    const totalAmount = totalDeductions.length > 0 ? totalDeductions[0].totalAmount : 0;
+
+    res.status(200).json({
+      status: true,
+      totalDeductions: totalAmount
+    });
+
+  } catch (error) {
+    console.error(`Error in fetching total benefit deductions: ${error.message}`);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
 export const updateUserDeduction = async (req, res) => {
   try {
     const { amount } = req.body;

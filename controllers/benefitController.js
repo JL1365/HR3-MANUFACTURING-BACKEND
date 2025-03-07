@@ -123,22 +123,22 @@ export const getAllEmployeeBenefitDetails = async (req, res) => {
 
     const users = response.data;
 
-    // Map user details to benefit requests
+
     const mappedBenefitRequests = benefitRequests.map(request => {
       const userId = request.userId.toString();
       const user = users.find(u => u._id === userId);
       
       return {
         ...request.toObject(),
-        userId: user ? { // Keep the userId field but replace with user object
-          _id: userId,
+        userId: user ? { 
+          _id: userId,//
           firstName: user.firstName,
           lastName: user.lastName
         } : null
       };
     });
     
-    // Map to benefit deductions (keep the original structure for IDs)
+
     const mappedBenefitDeductions = benefitDeductions.map(deduction => {
       return {
         ...deduction.toObject()

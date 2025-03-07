@@ -1,6 +1,7 @@
 import { generateServiceToken } from "../middleware/gatewayTokenGenerator.js";
 import { BudgetRequest } from "../models/finance/budgetRequestModel.js";
 import axios from "axios";
+import { ComplaintUser } from "../models/hr4/complaintUserModel.js";
 
 export const requestBudget = async (req, res) => {
     try {
@@ -102,5 +103,31 @@ export const getBudgetRequests = async (req, res) => {
     } catch (error) {
         console.error("Error fetching budget requests:", error);
         res.status(500).json({ message: "Error retrieving budget requests", error: error.message });
+    }
+};
+
+
+export const receiveGrievance = async (req, res) => {
+    try {
+
+        if (!req.file) {
+            return res.status(400).json({ message: "No file uploaded" });
+        }
+
+        const { fullName, complaintDescription, date} = req.body;
+
+        const documentUrl = req.file.path;
+        const newComplaint = new ComplaintUser({
+            fullName,
+            complaintDescription,
+            date,
+            file: documentUrl,
+        });
+
+      await newComplaint.save()
+        res.status(200).json({ message: "Budget request sent to Finance", data:newComplaint });
+    } catch (error) {
+        console.error("Error:", error);
+        res.status(500).json({ message: "Error processing budget request", error: error.message });
     }
 };

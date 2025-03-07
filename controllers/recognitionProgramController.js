@@ -191,6 +191,33 @@ export const getMyRecognitionAwards = async (req, res) => {
     }
 };
 
+export const updateMyRecognitionProgramStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!status || !["Not Claimed", "Claimed"].includes(status)) {
+            return res.status(400).json({ message: "Invalid status value." });
+        }
+
+        const recognitionProgram = await RecognitionProgram.findById(id);
+        if (!recognitionProgram) {
+            return res.status(404).json({ message: "Recognition Program not found." });
+        }
+
+        recognitionProgram.status = status;
+        await recognitionProgram.save();
+
+        return res.status(200).json({ 
+            message: "Recognition Program status updated successfully.",
+            data: recognitionProgram 
+        });
+    } catch (error) {
+        console.error("Error updating recognition program status:", error);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
 export const deleteRecognitionProgram = async (req,res) => {
     try {
         const {id} = req.params;

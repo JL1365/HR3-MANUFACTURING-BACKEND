@@ -124,7 +124,7 @@ export const getAllAppliedRequest = async (req, res) => {
             return {
                 ...requestBenefit.toObject(),
                 user: user
-                    ? { firstName: user.firstName, lastName: user.lastName }
+                    ? { firstName: user.firstName, lastName: user.lastName ,position:user.position }
                     : { firstName: "Unknown", lastName: "User" },
             };
         });
@@ -135,6 +135,42 @@ export const getAllAppliedRequest = async (req, res) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 };
+
+export const getAppliedRequestCount = async (req, res) => {
+  try {
+      // Get total applied requests count
+      const totalAppliedRequests = await BenefitRequest.countDocuments();
+
+      // Get new requests within 1 day
+      const oneDayAgo = new Date();
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+      const newRequestsCount = await BenefitRequest.countDocuments({
+          createdAt: { $gte: oneDayAgo }
+      });
+
+      // Get count of approved requests
+      const approvedCount = await BenefitRequest.countDocuments({ status: "Approved" });
+
+      // Get count of denied requests
+      const deniedCount = await BenefitRequest.countDocuments({ status: "Denied" });
+      const pendingCount = await BenefitRequest.countDocuments({ status: "Pending" });
+
+      res.status(200).json({ 
+          status: true, 
+          totalAppliedRequests, 
+          newRequestsCount,
+          approvedCount,
+          deniedCount,
+          pendingCount
+      });
+
+  } catch (error) {
+      console.error(`Error in getting applied request count: ${error.message}`);
+      return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 
 
 export const updateApplyRequestStatus = async (req, res) => {

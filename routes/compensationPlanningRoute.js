@@ -6,8 +6,8 @@ const compensationRoute = express.Router();
 
 
 compensationRoute.post("/create-compensation-plan",verifyToken,createCompensationPlan);
-compensationRoute.get("/get-compensation-plans",verifyToken,getCompensationPlan);
-compensationRoute.get("/get-benefits-and-deductions",verifyToken,getBenefitsAndDeductions);
+compensationRoute.get("/get-compensation-plans",getCompensationPlan);
+compensationRoute.get("/get-benefits-and-deductions",getBenefitsAndDeductions);
 compensationRoute.put("/update-compensation-plan/:id",verifyToken,updateCompensationPlan);
 compensationRoute.delete("/delete-compensation-plan/:id",verifyToken,deleteCompensationPlan);
 

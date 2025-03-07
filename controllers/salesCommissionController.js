@@ -374,19 +374,39 @@ export const getAllAssignedSalesCommissions = async (req, res) => {
 
 export const getAllEmployeeSalesStatus = async (req, res) => {
     try {
+        // Fetch all employee sales status records
         const employeeSalesStatus = await EmployeeSalesCommission.find()
-            .populate({
-                path: "userId",
-                select: "firstName lastName"
-            })
             .populate({
                 path: "salesCommissionId",
                 select: "salesCommissionName targetAmount"
             });
 
+        // Generate service token for external API authentication
+        const serviceToken = generateServiceToken();
+
+        // Fetch users from external API (admin accounts)
+        const response = await axios.get(
+            `${process.env.API_GATEWAY_URL}/admin/get-accounts`,
+            {
+                headers: { Authorization: `Bearer ${serviceToken}` },
+            }
+        );
+
+        const users = response.data; // List of users from the external API
+
+        // Attach user firstName and lastName to employee sales status
+        const updatedEmployeeSalesStatus = employeeSalesStatus.map(status => {
+            const user = users.find(user => user._id === status.userId.toString());
+
+            return {
+                ...status.toObject(),
+                user: user ? { firstName: user.firstName, lastName: user.lastName } : { firstName: "Unassigned", lastName: "User" }
+            };
+        });
+
         return res.status(200).json({
             message: "All employee sales status retrieved successfully.",
-            employeeSalesStatus,
+            employeeSalesStatus: updatedEmployeeSalesStatus,
         });
     } catch (error) {
         console.error("Server Error:", error);
@@ -396,15 +416,38 @@ export const getAllEmployeeSalesStatus = async (req, res) => {
 
 export const getAllAddedSalesCommissions = async (req, res) => {
     try {
+        // Fetch all sales commissions from the database
         const addedSales = await SalesHistory.find()
-            .populate("userId", "firstName lastName")
             .populate("salesCommissionId", "salesCommissionName targetAmount commissionRate")
-            .select("salesAmount salesProof confirmationStatus createdAt")
+            .select("salesAmount salesProof confirmationStatus createdAt userId") // Ensure userId is included
             .sort({ createdAt: -1 });
+
+        // Generate service token
+        const serviceToken = generateServiceToken();
+
+        // Fetch users from external API (Admin accounts)
+        const response = await axios.get(
+            `${process.env.API_GATEWAY_URL}/admin/get-accounts`,
+            {
+                headers: { Authorization: `Bearer ${serviceToken}` },
+            }
+        );
+
+        const users = response.data; // List of users from the API
+
+        // Attach user firstName and lastName to sales records
+        const updatedSales = addedSales.map(sale => {
+            const user = users.find(user => user._id === sale.userId?.toString());
+
+            return {
+                ...sale.toObject(),
+                user: user ? { firstName: user.firstName, lastName: user.lastName } : { firstName: "Unassigned", lastName: "User" },
+            };
+        });
 
         return res.status(200).json({
             message: "All added sales commissions retrieved successfully.",
-            addedSales,
+            addedSales: updatedSales,
         });
     } catch (error) {
         console.error("Server Error:", error);
