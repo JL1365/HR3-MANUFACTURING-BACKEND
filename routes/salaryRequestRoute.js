@@ -1,5 +1,5 @@
 import express from 'express'
-import { calculatePayroll, finalizePayroll, getAllSalaryDistributionRequests, 
+import { calculatePayroll, finalizePayroll, getAllPayrollHistory, getAllSalaryDistributionRequests, 
     getMySalaryDistributionRequests, 
     getPayrollWithDeductionsAndIncentives, 
     // manualResetPayroll, 
@@ -15,6 +15,7 @@ salaryRequestRoute.get("/calculate-payroll", calculatePayroll);
 salaryRequestRoute.get("/get-payroll-with-deductions", getPayrollWithDeductionsAndIncentives);
 // salaryRequestRoute.post("/manual-reset", manualResetPayroll);
 salaryRequestRoute.post("/finalize-payroll", finalizePayroll);
+salaryRequestRoute.get("/get-all-payroll-history",getAllPayrollHistory);
 
 salaryRequestRoute.post("/request-salary-distribution",verifyToken,requestSalaryDistribution);
 salaryRequestRoute.get("/get-my-salary-distribution-requests",verifyToken,getMySalaryDistributionRequests);

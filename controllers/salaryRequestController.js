@@ -267,7 +267,31 @@ export const finalizePayroll = async (req, res) => {
     }
 };
 
-
+export const getAllPayrollHistory = async (req, res) => {
+    try {
+      // Group payroll history by batch_id
+      const payrollHistory = await PayrollHistory.aggregate([
+        {
+          $group: {
+            _id: "$batch_id",  // Group by batch_id
+            payrolls: { $push: "$$ROOT" },  // Push the entire document into the 'payrolls' array
+          },
+        },
+        {
+          $sort: { "_id": -1 },  // Sort the results by batch_id (descending order)
+        },
+      ]);
+  
+      if (payrollHistory.length === 0) {
+        return res.status(404).json({ message: "No payroll history found." });
+      }
+  
+      return res.status(200).json(payrollHistory);
+    } catch (error) {
+      console.error("Error fetching payroll history:", error);
+      return res.status(500).json({ message: "Failed to retrieve payroll history." });
+    }
+  };
 
 export const requestSalaryDistribution = async (req, res) => {
     try {
