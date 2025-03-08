@@ -95,59 +95,37 @@ cron.schedule('0 0 1,16 * *', async () => {
   try {
     console.log('Cron job triggered: Checking expired batches and generating new batch');
 
-    const now = new Date();
-    console.log('Current time:', now); 
+    const latestBatch = await Batch.findOne().sort({ created_at: -1 });
 
-   
-    const expiredBatches = await Batch.find({
-      expiration_date: { $lt: now }, 
-    });
+    if (latestBatch) {
+      console.log(`Deleting the latest batch with ID: ${latestBatch.batch_id}`);
+      const deleteResult = await Batch.deleteOne({ _id: latestBatch._id });
 
-    console.log('Found expired batches:', expiredBatches.length); 
-
-    if (expiredBatches.length > 0) {
-
-      const deletedBatches = await Batch.deleteMany({
-        expiration_date: { $lt: now }, 
-      });
-      console.log(`Expired batches deleted: ${deletedBatches.deletedCount} batches removed.`);
+      if (deleteResult.deletedCount === 0) {
+        console.log(`Failed to delete the batch with ID: ${latestBatch.batch_id}`);
+      } else {
+        console.log(`Successfully deleted the batch with ID: ${latestBatch.batch_id}`);
+      }
     } else {
-      console.log('No expired batches found');
+      console.log("No batches found.");
     }
 
- 
-    const activeBatch = await Batch.findOne({
-      expiration_date: { $gte: now },  
+    const newBatchId = `batch-${Date.now()}`;
+    console.log(`New batch ID generated: ${newBatchId}`);
+
+    const newBatch = new Batch({
+      batch_id: newBatchId,
+      expiration_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
     });
 
-    let newBatchId = '';
-    if (!activeBatch) {
-      newBatchId = `batch-${now.getTime()}`; 
-      console.log(`No active batch found, generating new batch ID: ${newBatchId}`);
+    await newBatch.save();
+    console.log(`New batch created with ID: ${newBatchId}`);
 
-      const expirationDate = new Date(now);
-      expirationDate.setDate(now.getDate() + 15);
-
-
-      const newBatch = new Batch({
-        batch_id: newBatchId,
-        expiration_date: expirationDate,
-      });
-
-      await newBatch.save(); 
-      console.log(`New batch created with ID: ${newBatchId}`);
-    } else {
-      newBatchId = activeBatch.batch_id; 
-      console.log(`Active batch exists: ${newBatchId}`);
-    }
-
- 
-    const attendanceData = await Attendance.find({ batch_id: null }); 
+    const attendanceData = await Attendance.find({ batch_id: null });
     for (const record of attendanceData) {
-
       record.batch_id = newBatchId;
       await record.save();
-      console.log(`Updated attendance for employee ${record.employee_id} with batch ID`);
+      console.log(`Updated attendance for employee ${record.employee_id} with batch ID ${newBatchId}`);
     }
 
     console.log('Attendance data processed and batch ID assigned.');
@@ -156,85 +134,6 @@ cron.schedule('0 0 1,16 * *', async () => {
     console.error("Error during cron job execution:", err);
   }
 });
-
-// Manual trigger for deleting batches and generating new batches
-// integrationRoute.post("/trigger-cron", async (req, res) => {
-//   try {
-//     console.log('Manual trigger: Cron job started');
-
-//     // Trigger the same functionality as the cron job
-//     const serviceToken = generateServiceToken();
-
-//     const response = await axios.get(
-//       `${process.env.API_GATEWAY_URL}/hr1/get-time-tracking`,
-//       {
-//         headers: { Authorization: `Bearer ${serviceToken}` },
-//       }
-//     );
-
-//     console.log("Fetched data:", response.data);
-
-//     const attendanceData = response.data;
-
-//     const now = new Date();
-
-//     // Step 1: Delete expired batches
-//     const expiredBatches = await Batch.find({ expiration_date: { $lt: now } }); // Find expired batches
-
-//     if (expiredBatches.length > 0) {
-//       // Delete expired batches
-//       await Batch.deleteMany({
-//         expiration_date: { $lt: now },  // Delete batches that have expired
-//       });
-//       console.log(`Expired batches deleted successfully: ${expiredBatches.length} batches`);
-//     } else {
-//       console.log('No expired batches found');
-//     }
-
-//     // Step 2: Process new attendance data
-//     for (const record of attendanceData) {
-//       const existingAttendance = await Attendance.findOne({ _id: record._id });
-
-//       if (existingAttendance) {
-//         console.log(`Attendance with _id ${record._id} already exists, skipping.`);
-//         continue;
-//       }
-
-//       const batchId = await generateBatchId();  // Fetch or generate the batch ID
-
-//       const attendance = new Attendance({
-//         _id: record._id,
-//         employee_id: record.employee_id,
-//         employee_firstname: record.employee_firstname,
-//         employee_lastname: record.employee_lastname,
-//         position: record.position,
-//         time_in: record.time_in,
-//         time_out: record.time_out,
-//         total_hours: record.total_hours,
-//         overtime_hours: record.overtime_hours,
-//         status: record.status,
-//         remarks: record.remarks,
-//         purpose: record.purpose,
-//         entry_type: record.entry_type,
-//         approved_by: record.approved_by,
-//         approved_at: record.approved_at,
-//         entry_status: record.entry_status,
-//         minutes_late: record.minutes_late,
-//         batch_id: batchId,  // Assign the batch ID
-//       });
-
-//       await attendance.save(); // Save the record to the database
-//       console.log(`Saved attendance for employee ${record.employee_id} with _id ${record._id}`);
-//     }
-
-//     res.status(200).json({ message: 'Attendance data processed successfully via manual trigger' });
-//   } catch (err) {
-//     console.error("Error processing attendance data:", err);
-//     res.status(500).json({ message: 'Error processing attendance data', error: err.message });
-//   }
-// });
-
-
 
 integrationRoute.post("/trigger-cron", async (req, res) => {
   try {
@@ -330,8 +229,6 @@ integrationRoute.post("/trigger-cron", async (req, res) => {
     res.status(500).json({ message: 'Error processing attendance data', error: err.message });
   }
 });
-
-
 
 integrationRoute.get("/get-all-attendance-data", async (req, res) => {
   try {
