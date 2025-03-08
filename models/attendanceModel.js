@@ -74,7 +74,8 @@ const attendanceSchema = new mongoose.Schema({
   batch_id: { // New field for the batch ID
     type: String,
     required: true,
-  }
+  },
+  isFinalized: { type: Boolean, default: false }
 }, { timestamps: true }); // `timestamps` will automatically add createdAt and updatedAt fields
 
 // Create the Attendance model

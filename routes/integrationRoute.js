@@ -277,6 +277,7 @@ const attendance = new Attendance({
   entry_status: record.entry_status,
   minutes_late: record.minutes_late,
   batch_id: batchId,  // Now batch_id will be a string, not a Promise
+  isFinalized: false,
 });
 
 await attendance.save();  // Save the record to the database
@@ -284,7 +285,7 @@ console.log(`Saved attendance for employee ${record.employee_id} with _id ${reco
 
     }
 
-    res.status(200).json({ message: "Attendance data saved successfully" });
+    res.status(200).json({ message: "Attendance data saved successfully",attendanceData });
   } catch (err) {
     console.error("Error fetching and saving data:", err);
     res.status(500).json({ message: "Server error" });

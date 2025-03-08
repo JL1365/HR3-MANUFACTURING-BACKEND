@@ -33,6 +33,10 @@ const incentiveTrackingSchema = new mongoose.Schema({
     processedBy: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: "User" 
+    },
+    isAlreadyAdded: { 
+        type: Boolean, 
+        default: false
     }
 });
 

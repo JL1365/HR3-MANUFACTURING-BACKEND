@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const PayrollHistorySchema = new mongoose.Schema({
+    batch_id: { type: String, required: true },
     employee_id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     employee_firstname: { type: String, required: true },
     employee_lastname: { type: String, required: true },
@@ -14,7 +15,7 @@ const PayrollHistorySchema = new mongoose.Schema({
     benefitsDeductionsAmount: { type: Number, default: 0 },
     incentiveAmount: { type: Number, default: 0 },
     adjustedSalary: { type: Number, required: true },
-    payroll_date: { type: Date, default: Date.now } // Para may tracking kung kailan ito na-finalize
+    payroll_date: { type: Date, default: Date.now }
 });
 
 const PayrollHistory = mongoose.model("PayrollHistory", PayrollHistorySchema);
