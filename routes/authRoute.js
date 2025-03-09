@@ -157,20 +157,34 @@ authRoute.get("/get-login-activities", async (req, res) => {
   }
 });
 
-authRoute.post("/log-page-visit", async (req, res) => {
+authRoute.post("/log-page-visit", verifyToken, async (req, res) => {
   try {
-    const { userId, pageName, duration } = req.body;
+    console.log("Received request:", req.body);
+    const { pageName, duration } = req.body;
+    const userId = req.user._id;
 
-    await PageVisit.create({
-      user_id: userId,
-      pageName,
-      duration,
-    });
+    if (!pageName || !duration) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
 
-    res.status(200).json({ message: "Page visit logged successfully" });
+    const existingVisit = await PageVisit.findOne({ user_id: userId, pageName });
+
+    if (existingVisit) {
+      existingVisit.duration += parseFloat(duration);
+      await existingVisit.save();
+      return res.status(200).json({ message: "Page visit duration updated successfully" });
+    } else {
+      await PageVisit.create({
+        user_id: userId,
+        pageName,
+        duration: parseFloat(duration),
+      });
+
+      return res.status(200).json({ message: "Page visit logged successfully" });
+    }
   } catch (error) {
-    console.error("Error logging page visit:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error logging page visit:", error.stack);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -199,7 +213,6 @@ authRoute.get("/get-page-visits", async (req, res) => {
 authRoute.get("/get-all-page-visits", async (req, res) => {
   try {
     const allPageVisits = await PageVisit.find()
-      .sort({ lastLogin: -1 })
       .lean();
 
     return res.status(200).json({ success: true, data: allPageVisits });
@@ -214,7 +227,7 @@ authRoute.get("/check-auth",verifyToken,checkAuth);
 authRoute.put("/change-hr",verifyToken,changeHr);
 
 
-authRoute.get("/protected-get-accounts-from-admin", verifyToken, async (req, res) => {
+authRoute.get("/protected-get-accounts-from-admin", async (req, res) => {
   try {
     // Generate the service token for API authentication
     const serviceToken = generateServiceToken();
