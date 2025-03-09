@@ -46,6 +46,7 @@ authRoute.post("/logout",logoutAccount);
 //   }
 // });
 import useragent from "useragent";
+import { PageVisit } from '../models/pageVisitModel.js';
 
 authRoute.post("/testLog", async (req, res) => {
   try {
@@ -155,6 +156,59 @@ authRoute.get("/get-login-activities", async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 });
+
+authRoute.post("/log-page-visit", async (req, res) => {
+  try {
+    const { userId, pageName, duration } = req.body;
+
+    await PageVisit.create({
+      user_id: userId,
+      pageName,
+      duration,
+    });
+
+    res.status(200).json({ message: "Page visit logged successfully" });
+  } catch (error) {
+    console.error("Error logging page visit:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+authRoute.get("/get-page-visits", async (req, res) => {
+  try {
+    const pageVisits = await PageVisit.aggregate([
+      {
+        $group: {
+          _id: "$pageName",
+          totalVisits: { $sum: 1 },
+          totalTimeSpent: { $sum: "$duration" },
+          averageTimeSpent: { $avg: "$duration" },
+        },
+      },
+      { $sort: { totalVisits: -1 } },
+    ]);
+
+    res.status(200).json(pageVisits);
+  } catch (error) {
+    console.error("Error fetching page visits:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+authRoute.get("/get-all-page-visits", async (req, res) => {
+  try {
+    const allPageVisits = await PageVisit.find()
+      .sort({ lastLogin: -1 })
+      .lean();
+
+    return res.status(200).json({ success: true, data: allPageVisits });
+  } catch (err) {
+    console.error("Error fetching login activities:", err.message);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 
 authRoute.get("/check-auth",verifyToken,checkAuth);
 authRoute.put("/change-hr",verifyToken,changeHr);
