@@ -61,6 +61,7 @@ integrationRoute.post("/send-benefits-document", async (req, res) => {
 import cron from 'node-cron';
 import Attendance from '../models/attendanceModel.js';
 import Batch from '../models/batchModel.js';
+import { EmployeeLeave } from '../models/employeeLeaveModel.js';
 
 async function generateBatchId() {
   const now = new Date();
@@ -314,26 +315,95 @@ integrationRoute.get("/get-attendance-data", async (req, res) => {
   }
 });
 
+// integrationRoute.get("/get-all-approved-leaves", async (req, res) => {
+//     try {
+//       const serviceToken = generateServiceToken();
+  
+//       const response = await axios.get(
+//         `${process.env.API_GATEWAY_URL}/hr1/get-approved-leaves`,
+//         {
+//             headers: { Authorization: `Bearer ${serviceToken}` },
 
-integrationRoute.get("/get-all-approved-leaves", async (req, res) => {
-    try {
+//         }
+//       );
+  
+//       console.log("Fetched data:", response.data);
+  
+//       res.status(200).json(response.data);
+//     } catch (err) {
+//       console.error("Error fetching data:", err);
+//       res.status(500).json({ message: "Server error" });
+//     }
+// });
+
+integrationRoute.get("/get-all-employee-leaves-and-save-count", async (req, res) => {
+  try {
       const serviceToken = generateServiceToken();
-  
-      const response = await axios.get(
-        `${process.env.API_GATEWAY_URL}/hr1/get-approved-leaves`,
-        {
-            headers: { Authorization: `Bearer ${serviceToken}` },
 
-        }
-      );
-  
+      const response = await axios.get(`${process.env.API_GATEWAY_URL}/hr1/get-approved-leaves`, {
+          headers: { Authorization: `Bearer ${serviceToken}` }
+      });
+
       console.log("Fetched data:", response.data);
-  
-      res.status(200).json(response.data);
-    } catch (err) {
+
+      const leaveRecords = response.data.data; 
+
+      for (const leave of leaveRecords) {
+          const { employee_id, leave_id, leave_type,employee_firstname,employee_lastname } = leave;
+
+          const existingLeave = await EmployeeLeave.findOne({ employee_id, "leaves.leave_id": leave_id });
+
+          if (existingLeave) {
+              console.log(`Leave ID ${leave_id} already exists. Skipping...`);
+              continue;
+          }
+
+          let behavior = await EmployeeLeave.findOne({ employee_id });
+
+          if (!behavior) {
+              behavior = new EmployeeLeave({
+                  employee_id,
+                  employee_firstname,
+                  employee_lastname,
+                  leave_count: 0,
+                  leave_types: {},
+                  leaves: [] 
+              });
+          }
+
+          behavior.leave_count += 1;
+
+          if (!behavior.leave_types[leave_type]) {
+              behavior.leave_types[leave_type] = 0;
+          }
+          behavior.leave_types[leave_type] += 1;
+
+          behavior.leaves.push({ leave_id, leave_type });
+
+          await behavior.save();
+      }
+
+      res.status(200).json({ success: true, leaves: leaveRecords });
+  } catch (err) {
       console.error("Error fetching data:", err);
       res.status(500).json({ message: "Server error" });
-    }
+  }
+});
+
+integrationRoute.get("/get-employee-leaves-count", async (req, res) => {
+  try {
+      const employeesLeaves = await EmployeeLeave.find({}, "employee_id employee_firstname employee_lastname leave_count leave_types leaves");
+
+      const formattedData = employeesLeaves.map(emp => ({
+          ...emp.toObject(), 
+          leave_types: Object.fromEntries(emp.leave_types),
+      }));
+
+      res.status(200).json({ success: true, data: formattedData });
+  } catch (err) {
+      console.error("Error fetching leave count:", err);
+      res.status(500).json({ message: "Server error" });
+  }
 });
 
 const formatDate = (isoString) => isoString.split("T")[0];
