@@ -5,7 +5,7 @@ import { generateServiceToken } from "../middleware/gatewayTokenGenerator.js";
 import axios from 'axios'
 
 export const createCompensationPlan = async (req, res) => {
-    const { position, hourlyRate, overTimeRate, holidayRate, allowances,benefits } = req.body;
+    const { position, hourlyRate, overTimeRate, holidayRate, allowances,benefits,paidLeaves } = req.body;
 
     try {
 
@@ -45,7 +45,8 @@ export const createCompensationPlan = async (req, res) => {
             overTimeRate,
             holidayRate,
             allowances,
-            benefits
+            benefits,
+            paidLeaves
         });        
 
         await newPlan.save();
@@ -121,7 +122,7 @@ export const getBenefitsAndDeductions = async (req, res) => {
 
 export const updateCompensationPlan = async (req, res) => {
     const { id } = req.params;
-    const { position, hourlyRate, overTimeRate, holidayRate, allowances,benefits } = req.body;
+    const { position, hourlyRate, overTimeRate, holidayRate, allowances,benefits,paidLeaves } = req.body;
 
     try {
         const compensationPlan = await CompensationPlanning.findById(id).populate("position");
@@ -174,12 +175,27 @@ export const updateCompensationPlan = async (req, res) => {
             });
             
         }
+        let formattedPaidLeaves = compensationPlan.paidLeaves;
+        if (paidLeaves) {
+            if (!Array.isArray(paidLeaves)) {
+                return res.status(400).json({ success: false, message: "paidleaves must be an array!" });
+            }
+
+            formattedPaidLeaves = paidLeaves.map((paidLeave) => {
+                if (typeof paidLeave !== "object" || !paidLeave.leavesType || !paidLeave.paidLeavesAmount) {
+                    return res.status(400).json({ success: false, message: "Each paidLeave must have a 'benefitType' and 'paidLeavesAmount'." });
+                }
+                return { leavesType: paidLeave.leavesType, paidLeavesAmount: paidLeave.paidLeavesAmount };
+            });
+            
+        }
 
         compensationPlan.hourlyRate = hourlyRate || compensationPlan.hourlyRate;
         compensationPlan.overTimeRate = overTimeRate || compensationPlan.overTimeRate;
         compensationPlan.holidayRate = holidayRate || compensationPlan.holidayRate;
         compensationPlan.allowances = formattedAllowances;
         compensationPlan.benefits = formattedBenefits;
+        compensationPlan.paidLeaves = formattedPaidLeaves;
 
         await compensationPlan.save();
 

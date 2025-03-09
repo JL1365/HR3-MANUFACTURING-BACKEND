@@ -24,6 +24,10 @@ const compensationPlanningSchema = new mongoose.Schema({
     benefits: [{
         benefitType: { type: String, required: true },  
         deductionsAmount: { type: Number, required: true }
+    }],
+    paidLeaves: [{
+        leavesType: { type: String, required: true },  
+        paidLeavesAmount: { type: Number, required: true }
     }]
 }, { timestamps: true });
 
