@@ -71,14 +71,15 @@ const attendanceSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  batch_id: { // New field for the batch ID
+  batch_id: { 
     type: String,
     required: true,
   },
-  isFinalized: { type: Boolean, default: false }
-}, { timestamps: true }); // `timestamps` will automatically add createdAt and updatedAt fields
+  isFinalized: { type: Boolean, default: false },
+  holidayCount: { type: Number, default: 0 }, 
+  createdAt: { type: Date, default: Date.now }
+}, { timestamps: true });
 
-// Create the Attendance model
 const Attendance = mongoose.model('Attendance', attendanceSchema);
 
 export default Attendance;

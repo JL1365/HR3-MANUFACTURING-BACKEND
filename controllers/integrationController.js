@@ -14,10 +14,8 @@ export const requestBudget = async (req, res) => {
 
         const { requestId, totalBudget, category, reason } = req.body;
 
-        // Set department to HR3 by default
         const department = "HR3";
 
-        // Ensure category is 'Operational Expenses' for HR3
         if (category !== "Operational Expenses") {
             return res.status(400).json({ message: "HR3 must use category: 'Operational Expenses'." });
         }

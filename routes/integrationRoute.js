@@ -65,20 +65,14 @@ import { EmployeeLeave } from '../models/employeeLeaveModel.js';
 
 async function generateBatchId() {
   const now = new Date();
-
- 
   const activeBatch = await Batch.findOne({
-    expiration_date: { $gte: now }, 
+    expiration_date: { $gte: now },
   });
 
   if (activeBatch) {
-   
     return activeBatch.batch_id;
   } else {
-   
     const newBatchId = `batch-${now.getTime()}`;
-
-
     const expirationDate = new Date(now);
     expirationDate.setDate(now.getDate() + 15);
 
@@ -87,12 +81,12 @@ async function generateBatchId() {
       expiration_date: expirationDate,
     });
 
-    await newBatch.save(); 
-    return newBatchId; 
+    await newBatch.save();
+    return newBatchId;
   }
 }
 
-cron.schedule('0 0 1,16 * *', async () => {  
+cron.schedule('0 0 1,16 * *', async () => {
   try {
     console.log('Cron job triggered: Checking expired batches and generating new batch');
 
@@ -123,24 +117,63 @@ cron.schedule('0 0 1,16 * *', async () => {
     console.log(`New batch created with ID: ${newBatchId}`);
 
     const attendanceData = await Attendance.find({ batch_id: null });
-    for (const record of attendanceData) {
-      record.batch_id = newBatchId;
-      await record.save();
-      console.log(`Updated attendance for employee ${record.employee_id} with batch ID ${newBatchId}`);
-    }
+    await processAttendanceData(attendanceData);
 
     console.log('Attendance data processed and batch ID assigned.');
-
   } catch (err) {
     console.error("Error during cron job execution:", err);
   }
 });
 
+async function processAttendanceData(attendanceData) {
+  for (const record of attendanceData) {
+    try {
+      console.log(`Processing attendance record for employee ${record.employee_id} on ${record.time_in}`);
+      const isHoliday = await checkHoliday(record.time_in);
+      record.holidayCount = isHoliday ? (record.holidayCount || 0) + 1 : record.holidayCount || 0;
+      console.log(`Processed attendance for employee ${record.employee_id}. Holiday: ${isHoliday}, Holiday Count: ${record.holidayCount}`);
+      await record.save();
+      console.log(`Saved attendance for employee ${record.employee_id} with holiday count: ${record.holidayCount}`);
+    } catch (err) {
+      console.error(`Error processing attendance for employee ${record.employee_id}:`, err);
+    }
+  }
+}
+
+// You can add a method to check if the day is a holiday, for now, let's assume a list of holidays
+async function checkHoliday(time_in) {
+  // Convert time_in to a Date object if it's a string
+  if (typeof time_in === 'string') {
+    time_in = new Date(time_in);
+  }
+
+
+  if (!(time_in instanceof Date) || isNaN(time_in)) {
+    console.error('Invalid time_in value:', time_in);
+    return false;
+  }
+
+  const holidays = [
+    '2025-01-01',
+    '2025-03-10',
+ 
+  ];
+
+  const formattedDate = time_in.toISOString().split('T')[0]; 
+  const isHoliday = holidays.includes(formattedDate);
+  console.log(`Checking if ${formattedDate} is a holiday: ${isHoliday}`);
+  if (isHoliday) {
+    console.log(`Date ${formattedDate} is a holiday.`);
+  } else {
+    console.log(`Date ${formattedDate} is not a holiday.`);
+  }
+  return isHoliday;
+}
+
 integrationRoute.post("/trigger-cron", async (req, res) => {
   try {
     console.log('Manual trigger: Cron job started');
 
-    // Trigger the same functionality as the cron job
     const serviceToken = generateServiceToken();
 
     const response = await axios.get(
@@ -153,76 +186,7 @@ integrationRoute.post("/trigger-cron", async (req, res) => {
     console.log("Fetched data:", response.data);
 
     const attendanceData = response.data;
-
-    // Find the latest batch and delete it regardless of expiration status
-    const latestBatch = await Batch.findOne().sort({ created_at: -1 });  // Sort by created_at descending to get the latest batch
-
-    if (!latestBatch) {
-      console.log("No batches found.");
-      return res.status(404).json({ message: 'No batch records found' });
-    }
-
-    // Log the current expiration date and the batch ID that will be deleted
-    console.log(`Deleting the latest batch with ID: ${latestBatch.batch_id}`);
-
-    // Delete the latest batch
-    const deleteResult = await Batch.deleteOne({ _id: latestBatch._id });
-
-    if (deleteResult.deletedCount === 0) {
-      console.log(`Failed to delete the batch with ID: ${latestBatch.batch_id}`);
-    } else {
-      console.log(`Successfully deleted the batch with ID: ${latestBatch.batch_id}`);
-    }
-
-    // **Generate a new batch ID for future use**
-    const newBatchId = `batch-${Date.now()}`;  // Generate a new batch ID based on the current timestamp
-    console.log(`New batch ID generated: ${newBatchId}`);
-
-    // **Create a new batch record**
-    const newBatch = new Batch({
-      batch_id: newBatchId,  // Assign new batch ID
-      expiration_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),  // Set new expiration (e.g., 15 days later)
-    });
-
-    await newBatch.save();  // Save the new batch record
-    console.log(`New batch created with ID: ${newBatchId}`);
-
-    // Proceed with attendance processing, using the newly created batch ID
-    for (const record of attendanceData) {
-      const existingAttendance = await Attendance.findOne({ _id: record._id });
-
-      if (existingAttendance) {
-        console.log(`Attendance with _id ${record._id} already exists, skipping.`);
-        continue;
-      }
-
-      // Use the new batch ID
-      const batchId = newBatch.batch_id;
-
-      const attendance = new Attendance({
-        _id: record._id,
-        employee_id: record.employee_id,
-        employee_firstname: record.employee_firstname,
-        employee_lastname: record.employee_lastname,
-        position: record.position,
-        time_in: record.time_in,
-        time_out: record.time_out,
-        total_hours: record.total_hours,
-        overtime_hours: record.overtime_hours,
-        status: record.status,
-        remarks: record.remarks,
-        purpose: record.purpose,
-        entry_type: record.entry_type,
-        approved_by: record.approved_by,
-        approved_at: record.approved_at,
-        entry_status: record.entry_status,
-        minutes_late: record.minutes_late,
-        batch_id: batchId,  // Assign the new batch ID
-      });
-
-      await attendance.save();  // Save the record to the database
-      console.log(`Saved attendance for employee ${record.employee_id} with _id ${record._id}`);
-    }
+    await processAttendanceData(attendanceData);
 
     res.status(200).json({ message: 'Attendance data processed successfully via manual trigger' });
   } catch (err) {
@@ -256,37 +220,41 @@ integrationRoute.get("/get-all-attendance-data", async (req, res) => {
         continue;
       }
 
-    // Update the batchId generation logic to wait for the Promise to resolve
-const batchId = await generateBatchId();  // Ensure it resolves before using it
+      const batchId = await generateBatchId();
 
-const attendance = new Attendance({
-  _id: record._id,
-  employee_id: record.employee_id,
-  employee_firstname: record.employee_firstname,
-  employee_lastname: record.employee_lastname,
-  position: record.position,
-  time_in: record.time_in,
-  time_out: record.time_out,
-  total_hours: record.total_hours,
-  overtime_hours: record.overtime_hours,
-  status: record.status,
-  remarks: record.remarks,
-  purpose: record.purpose,
-  entry_type: record.entry_type,
-  approved_by: record.approved_by,
-  approved_at: record.approved_at,
-  entry_status: record.entry_status,
-  minutes_late: record.minutes_late,
-  batch_id: batchId,  // Now batch_id will be a string, not a Promise
-  isFinalized: false,
-});
 
-await attendance.save();  // Save the record to the database
-console.log(`Saved attendance for employee ${record.employee_id} with _id ${record._id}`);
+      const isHoliday = await checkHoliday(record.time_in);
+      const holidayCount = isHoliday ? (record.holidayCount || 0) + 1 : record.holidayCount || 0;
 
+      const attendance = new Attendance({
+        _id: record._id,
+        employee_id: record.employee_id,
+        employee_firstname: record.employee_firstname,
+        employee_lastname: record.employee_lastname,
+        position: record.position,
+        time_in: record.time_in,
+        time_out: record.time_out,
+        total_hours: record.total_hours,
+        overtime_hours: record.overtime_hours,
+        status: record.status,
+        remarks: record.remarks,
+        purpose: record.purpose,
+        entry_type: record.entry_type,
+        approved_by: record.approved_by,
+        approved_at: record.approved_at,
+        entry_status: record.entry_status,
+        minutes_late: record.minutes_late,
+        batch_id: batchId,
+        isHoliday: isHoliday,
+        holidayCount: holidayCount,
+        isFinalized: false,
+      });
+
+      await attendance.save();
+      console.log(`Saved attendance for employee ${record.employee_id} with _id ${record._id}`);
     }
 
-    res.status(200).json({ message: "Attendance data saved successfully",attendanceData });
+    res.status(200).json({ message: "Attendance data saved successfully", attendanceData });
   } catch (err) {
     console.error("Error fetching and saving data:", err);
     res.status(500).json({ message: "Server error" });
@@ -294,13 +262,11 @@ console.log(`Saved attendance for employee ${record.employee_id} with _id ${reco
 });
 
 
-
 integrationRoute.get("/get-attendance-data", async (req, res) => {
   try {
-    // Fetch all attendance records
+ 
     const attendance = await Attendance.find();
 
-    // Respond with the fetched attendance data
     res.status(200).json({
       success: true,
       data: attendance,

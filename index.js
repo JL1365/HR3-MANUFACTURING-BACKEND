@@ -24,6 +24,7 @@ import violationRoute from './routes/violationRoute.js';
 import salaryRequestRoute from './routes/salaryRequestRoute.js';
 
 import integrationRoute from './routes/integrationRoute.js';
+import payrollrouter from './routes/payrollRoute.js';
 
 
 dotenv.config(); //loads variable defined in .env
@@ -56,6 +57,7 @@ app.use("/api/penalty",penaltyRoute);
 app.use("/api/violation",violationRoute);
 
 app.use("/api/salaryRequest",salaryRequestRoute);
+app.use("/api/payroll",payrollrouter);
 
 app.use("/api/integration",integrationRoute);
 

@@ -7,7 +7,7 @@ import { generateServiceToken } from "../middleware/gatewayTokenGenerator.js";
 
 export const createViolation = async (req, res) => {
   try {
-    const { userId, penaltyLevel, violationDate, comments } = req.body;
+    const { userId, penaltyLevel, violationDate, sanctions } = req.body;
 
     if (!userId || !penaltyLevel || !violationDate) {
       return res.status(400).json({ message: 'All fields are required' });
@@ -40,7 +40,7 @@ export const createViolation = async (req, res) => {
       userId,
       penaltyLevel,
       violationDate,
-      comments,
+      sanctions,
     });
 
     await newViolation.save();
@@ -71,7 +71,7 @@ export const getEmployeeViolations = async (req, res) => {
     const employeeViolations = await Violation.find().populate('penaltyLevel');
 
     if (!employeeViolations.length) {
-      return res.status(404).json({ message: 'No employee violations found' });
+      return res.status(400).json({ message: 'No employee violations found' });
     }
 
     // Attach user details from the admin API to each violation

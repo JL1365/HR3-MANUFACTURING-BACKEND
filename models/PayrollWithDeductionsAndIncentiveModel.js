@@ -14,10 +14,10 @@ const PayrollWithDeductionsSchema = new mongoose.Schema({
     hourlyRate: { type: Number, required: true },
     overtimeRate: { type: Number, required: true },
     holidayRate: { type: Number, required: true },
-    salary: { type: Number, required: true },
+    grossSalary: { type: Number, required: true },
     benefitsDeductionsAmount: { type: Number, required: true, default: 0 },
     incentiveAmount: { type: Number, required: true, default: 0 },
-    adjustedSalary: { type: Number, required: true }
+    netSalary: { type: Number, required: true }
 }, { timestamps: true });
 
 const PayrollWithDeductions = mongoose.model("PayrollWithDeductions", PayrollWithDeductionsSchema);

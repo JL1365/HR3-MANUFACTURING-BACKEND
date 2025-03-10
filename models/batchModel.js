@@ -4,18 +4,19 @@ const batchSchema = new mongoose.Schema({
   batch_id: {
     type: String,
     required: true,
-    unique: true,  // Ensure that each batch ID is unique
+    unique: true, 
   },
   created_at: {
     type: Date,
-    default: Date.now,  // Automatically set the creation time
+    default: Date.now, 
   },
   expiration_date: {
-    type: Date,  // Set expiration date for the batch ID (e.g., 15 days later)
+    type: Date, 
   },
+  totalPayrollAmount: { type: Number, default: 0 }
 });
 batchSchema.virtual('isExpired').get(function () {
-    return Date.now() > this.expiration_date;  // Compare current time with expiration date
+    return Date.now() > this.expiration_date;
   });
 
 const Batch = mongoose.model('Batch', batchSchema);

@@ -15,7 +15,6 @@ export const calculatePayroll = async (req, res) => {
     try {
         const serviceToken = generateServiceToken();
 
-        // Fetch only non-finalized attendance records
         const attendanceData = await Attendance.find({ isFinalized: { $ne: true } });
 
         const compensationPlans = await CompensationPlanning.find();
@@ -42,7 +41,7 @@ export const calculatePayroll = async (req, res) => {
 
         const defaultHourlyRate = 110;
         const defaultOvertimeRate = 75;
-        const defaultHolidayRate = 30;
+        const defaultHolidayRate = 3;
 
         const payrollByBatch = {};
 
@@ -70,10 +69,18 @@ export const calculatePayroll = async (req, res) => {
                 overtimeMinutes = matches && matches[2] ? parseInt(matches[2], 10) || 0 : 0;
             }
 
-            const totalWorkHours = totalHours + (totalMinutes / 60);
-            const totalOvertimeHours = overtimeHours + (overtimeMinutes / 60);
+            let dailyWorkHours = totalHours + (totalMinutes / 60);
+            let dailyOvertimeHours = overtimeHours + (overtimeMinutes / 60);
 
-            
+            const isHoliday = attendance.holidayCount > 0;
+
+            if (isHoliday) {
+                dailyWorkHours *= holidayRate;
+                dailyOvertimeHours *= 1.30; 
+            } else {
+                dailyOvertimeHours *= 1.25;
+            }
+
             if (!payrollByBatch[batchId]) {
                 payrollByBatch[batchId] = {};
             }
@@ -84,15 +91,21 @@ export const calculatePayroll = async (req, res) => {
                     employee_firstname: attendance.employee_firstname,
                     employee_lastname: attendance.employee_lastname,
                     position: positionName,
-                    totalWorkHours,
-                    totalOvertimeHours,
+                    dailyWorkHours: [{ hours: dailyWorkHours, date: attendance.createdAt, isHoliday }], 
+                    dailyOvertimeHours: [{ hours: dailyOvertimeHours, date: attendance.createdAt, isHoliday }],
+                    totalWorkHours: dailyWorkHours,
+                    totalOvertimeHours: dailyOvertimeHours,
                     hourlyRate,
                     overtimeRate,
-                    holidayRate
+                    holidayRate,
+                    holidayCount: attendance.holidayCount
                 };
             } else {
-                payrollByBatch[batchId][employeeId].totalWorkHours += totalWorkHours;
-                payrollByBatch[batchId][employeeId].totalOvertimeHours += totalOvertimeHours;
+                payrollByBatch[batchId][employeeId].dailyWorkHours.push({ hours: dailyWorkHours, date: attendance.createdAt, isHoliday });
+                payrollByBatch[batchId][employeeId].dailyOvertimeHours.push({ hours: dailyOvertimeHours, date: attendance.createdAt, isHoliday });
+                payrollByBatch[batchId][employeeId].totalWorkHours += dailyWorkHours;
+                payrollByBatch[batchId][employeeId].totalOvertimeHours += dailyOvertimeHours;
+                payrollByBatch[batchId][employeeId].holidayCount += attendance.holidayCount;
             }
         });
 
@@ -100,8 +113,8 @@ export const calculatePayroll = async (req, res) => {
             batch_id: batchId,
             employees: Object.values(employees).map(employee => ({
                 ...employee,
-                salary: ((employee.totalWorkHours * employee.hourlyRate) + 
-                         (employee.totalOvertimeHours * employee.overtimeRate)).toFixed(2)
+                grossSalary: ((employee.totalWorkHours * employee.hourlyRate) + 
+                             (employee.totalOvertimeHours * employee.overtimeRate)).toFixed(2)
             }))
         }));
 
@@ -123,7 +136,6 @@ export const getPayrollWithDeductionsAndIncentives = async (req, res) => {
         const payrollData = payrollResponse.data.data;
 
         const deductions = await BenefitDeduction.find({ isAlreadyAdded: false });
-
         const approvedIncentives = await IncentiveTracking.find({ isAlreadyAdded: false });
 
         const deductionsMap = {};
@@ -138,16 +150,19 @@ export const getPayrollWithDeductionsAndIncentives = async (req, res) => {
             incentivesMap[key] = (incentivesMap[key] || 0) + incentive.amount;
         });
 
-        const updatedPayroll = payrollData.map(batch => ({
-            batch_id: batch.batch_id,
-            employees: batch.employees.map(employee => {
+        const updatedPayroll = payrollData.map(batch => {
+            let totalNetSalary = 0;
+            
+            const employees = batch.employees.map(employee => {
                 if (!employee || !employee.employee_id) return null;
 
                 const key = `${employee.employee_id}`;
                 const benefitsDeductionsAmount = deductionsMap[key] || 0;
                 const incentiveAmount = incentivesMap[key] || 0;
-                const salary = parseFloat(employee.salary) || 0;
-                const adjustedSalary = (salary + incentiveAmount - benefitsDeductionsAmount).toFixed(2);
+                const grossSalary = parseFloat(employee.grossSalary) || 0;
+                const netSalary = (grossSalary + incentiveAmount - benefitsDeductionsAmount).toFixed(2);
+                
+                totalNetSalary += parseFloat(netSalary);
 
                 return {
                     batch_id: batch.batch_id,
@@ -157,16 +172,25 @@ export const getPayrollWithDeductionsAndIncentives = async (req, res) => {
                     position: employee.position,
                     totalWorkHours: employee.totalWorkHours,
                     totalOvertimeHours: employee.totalOvertimeHours,
+                    dailyWorkHours: employee.dailyWorkHours,
+                    dailyOvertimeHours: employee.dailyOvertimeHours,
                     hourlyRate: employee.hourlyRate,
                     overtimeRate: employee.overtimeRate,
                     holidayRate: employee.holidayRate,
-                    salary: employee.salary,
+                    holidayCount: employee.holidayCount,
+                    grossSalary: employee.grossSalary,
                     benefitsDeductionsAmount,
                     incentiveAmount,
-                    adjustedSalary
+                    netSalary
                 };
-            }).filter(emp => emp !== null)
-        }));
+            }).filter(emp => emp !== null);
+
+            return {
+                batch_id: batch.batch_id,
+                totalNetSalary: totalNetSalary.toFixed(2),
+                employees
+            };
+        });
 
         res.status(200).json({ success: true, data: updatedPayroll });
     } catch (error) {
@@ -196,28 +220,39 @@ export const finalizePayroll = async (req, res) => {
             return res.status(404).json({ success: false, message: `No payroll data found for batch ${batch_id}` });
         }
 
+        console.log("Payroll Employees Data:", payrollData.employees);
+
         const employeeIds = payrollData.employees.map(emp => emp.employee_id);
+
+        const totalPayrollAmount = payrollData.employees.reduce((sum, emp) => {
+            return sum + parseFloat(emp.netSalary || 0);
+        }, 0).toFixed(2);
 
         const payrollHistoryRecords = payrollData.employees.map(emp => ({
             batch_id: batch_id,
             employee_id: emp.employee_id,
-            employee_firstname: emp.firstname || emp.first_name || "Unknown",
-            employee_lastname: emp.lastname || emp.last_name || "Unknown",
+            employee_firstname: emp.employee_firstname || "Unknown",
+            employee_lastname: emp.employee_lastname || "Unknown",
             position: emp.position,
             totalWorkHours: emp.totalWorkHours,
             totalOvertimeHours: emp.totalOvertimeHours,
+            dailyWorkHours: emp.dailyWorkHours,
+            dailyOvertimeHours: emp.dailyOvertimeHours,
             hourlyRate: emp.hourlyRate,
             overtimeRate: emp.overtimeRate,
             holidayRate: emp.holidayRate,
-            salary: emp.salary,
+            holidayCount: emp.holidayCount,
+            grossSalary: emp.grossSalary,
             benefitsDeductionsAmount: emp.benefitsDeductionsAmount,
             incentiveAmount: emp.incentiveAmount,
-            adjustedSalary: emp.adjustedSalary,
+            netSalary: emp.netSalary,
         }));
 
         console.log("Payroll History Records to be inserted:", payrollHistoryRecords);
+        console.log("Total Payroll Amount:", totalPayrollAmount);
 
-        await PayrollHistory.insertMany(payrollHistoryRecords);
+        const insertedRecords = await PayrollHistory.insertMany(payrollHistoryRecords);
+        console.log("Inserted Payroll History Records:", insertedRecords);
 
         await IncentiveTracking.updateMany(
             { userId: { $in: employeeIds }, isAlreadyAdded: false },
@@ -241,14 +276,13 @@ export const finalizePayroll = async (req, res) => {
             await Batch.deleteOne({ _id: latestBatch._id });
         }
 
- 
         const newBatchId = `batch-${Date.now()}`;
         console.log(`New batch ID generated: ${newBatchId}`);
 
-
         const newBatch = new Batch({
             batch_id: newBatchId,
-            expiration_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)
+            expiration_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+            totalPayrollAmount: totalPayrollAmount
         });
 
         await newBatch.save();
@@ -258,7 +292,8 @@ export const finalizePayroll = async (req, res) => {
         res.status(200).json({
             success: true,
             message: `Payroll for batch ${batch_id} finalized successfully. New batch ${newBatchId} created.`,
-            new_batch_id: newBatchId
+            new_batch_id: newBatchId,
+            totalPayrollAmount: totalPayrollAmount
         });
 
     } catch (error) {
@@ -269,16 +304,15 @@ export const finalizePayroll = async (req, res) => {
 
 export const getAllPayrollHistory = async (req, res) => {
     try {
-      // Group payroll history by batch_id
       const payrollHistory = await PayrollHistory.aggregate([
         {
           $group: {
-            _id: "$batch_id",  // Group by batch_id
-            payrolls: { $push: "$$ROOT" },  // Push the entire document into the 'payrolls' array
+            _id: "$batch_id", 
+            payrolls: { $push: "$$ROOT" },
           },
         },
         {
-          $sort: { "_id": -1 },  // Sort the results by batch_id (descending order)
+          $sort: { "_id": -1 },
         },
       ]);
   
@@ -342,10 +376,10 @@ export const getMySalaryDistributionRequests = async (req, res) => {
 
 export const getAllSalaryDistributionRequests = async (req, res) => {
     try {
-        // Generate service token
+    
         const serviceToken = generateServiceToken();
 
-        // Fetch user details from external API
+      
         const response = await axios.get(
             `${process.env.API_GATEWAY_URL}/admin/get-accounts`,
             {
@@ -353,12 +387,10 @@ export const getAllSalaryDistributionRequests = async (req, res) => {
             }
         );
 
-        const users = response.data; // Get users from API response
+        const users = response.data;
 
-        // Fetch all salary distribution requests
         const allSalaryDistributionRequests = await SalaryRequest.find();
 
-        // Attach user firstName and lastName to salary distribution requests
         const updatedSalaryDistributionRequests = allSalaryDistributionRequests.map(request => {
             const user = users.find(user => user._id.toString() === request.userId.toString());
             return {

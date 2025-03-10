@@ -16,7 +16,7 @@ const violationSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
-    comments: {
+    sanctions: {
       type: String,
     },
     status: {
